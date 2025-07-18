@@ -5,14 +5,16 @@ It implements the Reader specification, but your plugin may choose to
 implement multiple readers or even other plugin contributions. see:
 https://napari.org/stable/plugins/building_a_plugin/guides.html#readers
 """
-import geff
-import numpy as np
-from geff.utils import validate
-from geff import GeffMetadata
-import zarr
-import networkx as nx
+
 from collections import defaultdict
+
+import geff
+import networkx as nx
 import pandas as pd
+import zarr
+from geff import GeffMetadata
+from geff.utils import validate
+
 
 def napari_get_reader(path):
     """A basic implementation of a Reader contribution.
@@ -36,7 +38,7 @@ def napari_get_reader(path):
 
     try:
         validate(path)
-    except Exception:
+    except AssertionError:
         return None
 
     graph = zarr.open(path, mode="r")
@@ -80,43 +82,50 @@ def reader_function(path):
 
     path = paths[0]
 
-    nx_graph = geff.read_nx(path, validate = False)
+    nx_graph = geff.read_nx(path, validate=False)
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
-    #points = np.array(
+    # points = np.array(
     #    [[node_to_tid[node_id], data['t'], data['y'], data['x']] for node_id, data in G_hela.nodes(data=True)])
-    #points = pd.DataFrame(points, columns=['track_id', 't', 'y', 'x'])
-    #points['track_id'] = points['track_id'].astype(int)
+    # points = pd.DataFrame(points, columns=['track_id', 't', 'y', 'x'])
+    # points['track_id'] = points['track_id'].astype(int)
 
     if "axis_names" in nx_graph.graph:
         axis_names = list(nx_graph.graph["axis_names"])
         tracks = pd.DataFrame(
-            [[node_id, node_to_tid[node_id], data['t']] + [data[axis_name] for axis_name in axis_names] for node_id, data in nx_graph.nodes(data=True)]
+            [
+                [node_id, node_to_tid[node_id], data["t"]]
+                + [data[axis_name] for axis_name in axis_names]
+                for node_id, data in nx_graph.nodes(data=True)
+            ]
         )
 
     else:
         position_attr = nx_graph.graph["position_attr"]
         tracks = pd.DataFrame(
-            [[node_id, node_to_tid[node_id], data['t']] + data[position_attr] for node_id, data in
-             nx_graph.nodes(data=True)]
+            [
+                [node_id, node_to_tid[node_id], data["t"]]
+                + data[position_attr]
+                for node_id, data in nx_graph.nodes(data=True)
+            ]
         )
-        position_ndim = tracks.ndim - 3 # because one for node_id, t, track_id
+        position_ndim = tracks.ndim - 3  # because one for node_id, t, track_id
         axis_names = [f"axis_{i}" for i in range(position_ndim)]
 
-    tracks.columns = ['node_id', 'track_id', 't'] + axis_names
-    tracks.sort_values(by=['track_id', 't'], inplace=True)
-    tracks['track_id'] = tracks['track_id'].astype(int)
+    tracks.columns = ["node_id", "track_id", "t"] + axis_names
+    tracks.sort_values(by=["track_id", "t"], inplace=True)
+    tracks["track_id"] = tracks["track_id"].astype(int)
 
-    tracks_napari = tracks[['track_id', 't'] + axis_names] # for napari tracks layer,
+    tracks_napari = tracks[["track_id", "t"] + axis_names]
 
-    points = tracks[["t"] + axis_names].values
     metadata = {"nx_graph": nx_graph}
 
-    points_features = tracks[["track_id", "node_id"]]
-
     return [
-        (tracks_napari, {"graph": track_graph, "name": "Tracks", "metadata": metadata}, "tracks"),
-        (points, {"name": "Points", "metadata": metadata, "features": points_features}, "points")
+        (
+            tracks_napari,
+            {"graph": track_graph, "name": "Tracks", "metadata": metadata},
+            "tracks",
+        ),
     ]
 
 
@@ -163,8 +172,7 @@ def get_tracklets(graph: nx.DiGraph):
         track_id += 1
 
     track_graph = {
-        node_to_tid[node_id]: [node_to_tid[node_id_]
-                               for node_id_ in parents]
+        node_to_tid[node_id]: [node_to_tid[node_id_] for node_id_ in parents]
         for node_id, parents in parent_graph.items()
     }
 
