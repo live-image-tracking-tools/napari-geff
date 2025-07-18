@@ -6,7 +6,6 @@ readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
   {name = "Live Image Tracking Tools (LITT) team"},
-  {email = ""},
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -33,6 +32,8 @@ dependencies = [
     "magicgui",
     "qtpy",
     "scikit-image",
+    "geff",
+    "pandas",
 ]
 
 [project.optional-dependencies]
