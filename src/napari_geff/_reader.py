@@ -88,40 +88,29 @@ def reader_function(
     nx_graph = geff.read_nx(path, validate=False)
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
-    if "axis_names" in nx_graph.graph:
-        axis_names = list(nx_graph.graph["axis_names"])
-        tracks = pd.DataFrame(
-            [
-                [node_id, node_to_tid[node_id], data["t"]]
-                + [data[axis_name] for axis_name in axis_names]
-                for node_id, data in nx_graph.nodes(data=True)
-            ]
-        )
+    node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
+    # initial dataframe will have `node_id` column and column containing dictionary of other attributes
+    # this line splits out the dictionary into separate columns
+    node_data_df = pd.concat(
+        [node_data_df.drop(columns=[1]), node_data_df[1].apply(pd.Series)],
+        axis=1,
+    )
+    node_data_df.rename(columns={0: "node_id"}, inplace=True)
+    node_data_df["track_id"] = node_data_df["node_id"].map(node_to_tid)
 
-    else:
-        position_attr = nx_graph.graph["position_attr"]
-        tracks = pd.DataFrame(
-            [
-                [node_id, node_to_tid[node_id], data["t"]]
-                + data[position_attr]
-                for node_id, data in nx_graph.nodes(data=True)
-            ]
-        )
-        position_ndim = tracks.ndim - 3  # because one for node_id, t, track_id
-        axis_names = [f"axis_{i}" for i in range(position_ndim)]
-
-    tracks.columns = ["node_id", "track_id", "t"] + axis_names
-    tracks.sort_values(by=["track_id", "t"], inplace=True)
-    tracks["track_id"] = tracks["track_id"].astype(int)
-
-    tracks_napari = tracks[["track_id", "t"] + axis_names]
-
+    tracks_napari = node_data_df[
+        ["track_id", "t"] + list(nx_graph.graph.get("axis_names", []))
+    ]
     metadata = {"nx_graph": nx_graph}
-
     return [
         (
             tracks_napari,
-            {"graph": track_graph, "name": "Tracks", "metadata": metadata},
+            {
+                "graph": track_graph,
+                "name": "Tracks",
+                "metadata": metadata,
+                "features": node_data_df,
+            },
             "tracks",
         ),
     ]
