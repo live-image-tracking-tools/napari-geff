@@ -90,24 +90,29 @@ def reader_function(path):
 
     if "axis_names" in nx_graph.graph:
         axis_names = list(nx_graph.graph["axis_names"])
-        tracks = np.array(
-            [[node_to_tid[node_id], data['t']] + [data[axis_name] for axis_name in axis_names] for node_id, data in nx_graph.nodes(data=True)])
+        tracks = pd.DataFrame(
+            [[node_to_tid[node_id], data['t']] + [data[axis_name] for axis_name in axis_names] for node_id, data in nx_graph.nodes(data=True)]
+        )
+
     else:
         position_attr = nx_graph.graph["position_attr"]
-        tracks = np.array(
+        tracks = pd.DataFrame(
             [[node_to_tid[node_id], data['t']] + data[position_attr] for node_id, data in
-             nx_graph.nodes(data=True)])
+             nx_graph.nodes(data=True)]
+        )
         position_ndim = tracks.ndim - 2 # because one for t and one for track_id
         axis_names = [f"axis_{i}" for i in range(position_ndim)]
 
-    tracks = pd.DataFrame(tracks, columns=['track_id', 't'] + axis_names)
+    tracks.columns = ['track_id', 't'] + axis_names
+    tracks.sort_values(by=['track_id', 't'], inplace=True)
     tracks['track_id'] = tracks['track_id'].astype(int)
 
     points = tracks[["t"] + axis_names].values
+    metadata = {"nx_graph": nx_graph}
 
     return [
-        (tracks, {"graph": track_graph, "name": "Tracks"}, "tracks"),
-        (points, {"name": "Points"}, "points")
+        (tracks, {"graph": track_graph, "name": "Tracks", "metadata": metadata}, "tracks"),
+        (points, {"name": "Points", "metadata": {"nx_graph": metadata}}, "points")
     ]
 
 
