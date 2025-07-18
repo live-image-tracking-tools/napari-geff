@@ -89,6 +89,8 @@ def reader_function(
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
     node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
+    # initial dataframe will have `node_id` column and column containing dictionary of other attributes
+    # this line splits out the dictionary into separate columns
     node_data_df = pd.concat(
         [node_data_df.drop(columns=[1]), node_data_df[1].apply(pd.Series)],
         axis=1,
