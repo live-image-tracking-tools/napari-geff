@@ -2,15 +2,15 @@
 This module provides a reader for geff zarr-backed files in napari.
 
 If the file is a valid geff file with either position OR axis_names attributes,
-the file will be read into a `Points` layer and a `Tracks` layer.
+the file will be read into a `Tracks` layer.
 
 The original networkx graph read by `geff.read_nx` is stored in the metadata
-attribute on both layers.
+attribute on the layer.
 """
 
 from collections import defaultdict
 from collections.abc import Callable
-from typing import Union
+from typing import Any, Union
 
 import geff
 import networkx as nx
@@ -62,8 +62,10 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
     return reader_function
 
 
-def reader_function(path):
-    """Read geff file at path and return `Tracks` and `Points` layer data tuples.
+def reader_function(
+    path: Union[str, list[str]]
+) -> list[tuple[pd.DataFrame, dict[str, Any], str]]:
+    """Read geff file at path and return `Tracks` layer data tuple.
 
     The original networkx graph read by `geff.read_nx` is stored in the metadata
     attribute on the layer.
@@ -75,13 +77,8 @@ def reader_function(path):
 
     Returns
     -------
-    layer_data : list of tuples
-        A list of LayerData tuples where each tuple in the list contains
-        (data, metadata, layer_type), where data is a numpy array, metadata is
-        a dict of keyword arguments for the corresponding viewer.add_* method
-        in napari, and layer_type is a lower-case string naming the type of
-        layer. Both "meta", and "layer_type" are optional. napari will
-        default to layer_type=="image" if not provided
+    layer_data : list of tracks layer tuple
+        List containing tuple of data and metadata for the `Tracks` layer
     """
     # handle both a string and a list of strings
     paths = [path] if isinstance(path, str) else path
@@ -130,7 +127,26 @@ def reader_function(path):
     ]
 
 
-def get_tracklets(graph: nx.DiGraph):
+def get_tracklets(
+    graph: nx.DiGraph,
+) -> tuple[dict[Any, int], dict[int, list[int]]]:
+    """Extract tracklet IDs and parent-child connections from a directed graph.
+
+    A tracklet consists of a sequence of nodes in the graph connected by edges
+    where the incoming and outgoing degree of each node on the path is at most 1.
+
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        networkx graph of full tracking data
+
+    Returns
+    -------
+    Tuple[Dict[Any, int], Dict[int, List[int]]]
+        A tuple containing:
+        - A dictionary mapping node IDs to tracklet IDs.
+        - A dictionary mapping each node ID to a list of its parent tracklet IDs.
+    """
     track_id = 1
     visited_nodes = set()
     node_to_tid = {}
