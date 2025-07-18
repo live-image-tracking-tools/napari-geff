@@ -109,17 +109,10 @@ def reader_function(path):
 
     tracks_napari = tracks[['track_id', 't'] + axis_names]
 
-    points = tracks[["t"] + axis_names].values
     metadata = {"nx_graph": nx_graph}
-
-    points_features = {
-        "track_id": tracks['track_id'].values,
-        "node_id": tracks['node_id'].values
-    }
 
     return [
         (tracks_napari, {"graph": track_graph, "name": "Tracks", "metadata": metadata}, "tracks"),
-        (points, {"name": "Points", "metadata": {"nx_graph": metadata}, "features": points_features}, "points")
     ]
 
 
