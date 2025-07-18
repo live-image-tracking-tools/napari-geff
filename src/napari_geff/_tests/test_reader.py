@@ -1,6 +1,6 @@
 import numpy as np
 
-from napari_geff import napari_get_reader
+from napari_geff import get_geff_reader
 
 
 # tmp_path is a pytest fixture
@@ -13,7 +13,7 @@ def test_reader(tmp_path):
     np.save(my_test_file, original_data)
 
     # try to read it back in
-    reader = napari_get_reader(my_test_file)
+    reader = get_geff_reader(my_test_file)
     assert callable(reader)
 
     # make sure we're delivering the right format
@@ -27,5 +27,5 @@ def test_reader(tmp_path):
 
 
 def test_get_reader_pass():
-    reader = napari_get_reader("fake.file")
+    reader = get_geff_reader("fake.file")
     assert reader is None

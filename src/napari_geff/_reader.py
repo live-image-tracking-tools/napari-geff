@@ -1,12 +1,16 @@
 """
-This module is an example of a barebones numpy reader plugin for napari.
+This module provides a reader for geff zarr-backed files in napari.
 
-It implements the Reader specification, but your plugin may choose to
-implement multiple readers or even other plugin contributions. see:
-https://napari.org/stable/plugins/building_a_plugin/guides.html#readers
+If the file is a valid geff file with either position OR axis_names attributes,
+the file will be read into a `Points` layer and a `Tracks` layer.
+
+The original networkx graph read by `geff.read_nx` is stored in the metadata
+attribute on both layers.
 """
 
 from collections import defaultdict
+from collections.abc import Callable
+from typing import Union
 
 import geff
 import networkx as nx
@@ -16,8 +20,12 @@ from geff import GeffMetadata
 from geff.utils import validate
 
 
-def napari_get_reader(path):
-    """A basic implementation of a Reader contribution.
+def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
+    """Returns reader function if path is a valid geff file, otherwise None.
+
+    This function checks if the provided path is a valid geff file using the
+    geff validator. It additionally checks that either a `position` or `axis_names`
+    attribute is present on the graph, and that the graph is directed.
 
     Parameters
     ----------
@@ -27,8 +35,8 @@ def napari_get_reader(path):
     Returns
     -------
     function or None
-        If the path is a recognized format, return a function that accepts the
-        same path or list of paths, and returns a list of layer data tuples.
+        Returns the reader function if the path is a valid geff file,
+        otherwise returns None.
     """
     if isinstance(path, list):
         # reader plugins may be handed single path, or a list of paths.
@@ -51,16 +59,14 @@ def napari_get_reader(path):
     if not meta.directed:
         return None
 
-    # otherwise we return the *function* that can read ``path``.
     return reader_function
 
 
 def reader_function(path):
-    """Take a path or list of paths and return a list of LayerData tuples.
+    """Read geff file at path and return `Tracks` and `Points` layer data tuples.
 
-    Readers are expected to return data as a list of tuples, where each tuple
-    is (data, [add_kwargs, [layer_type]]), "add_kwargs" and "layer_type" are
-    both optional.
+    The original networkx graph read by `geff.read_nx` is stored in the metadata
+    attribute on the layer.
 
     Parameters
     ----------
@@ -84,11 +90,6 @@ def reader_function(path):
 
     nx_graph = geff.read_nx(path, validate=False)
     node_to_tid, track_graph = get_tracklets(nx_graph)
-
-    # points = np.array(
-    #    [[node_to_tid[node_id], data['t'], data['y'], data['x']] for node_id, data in G_hela.nodes(data=True)])
-    # points = pd.DataFrame(points, columns=['track_id', 't', 'y', 'x'])
-    # points['track_id'] = points['track_id'].astype(int)
 
     if "axis_names" in nx_graph.graph:
         axis_names = list(nx_graph.graph["axis_names"])
