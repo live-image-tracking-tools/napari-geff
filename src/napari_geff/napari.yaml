@@ -18,7 +18,7 @@ contributions:
   readers:
     - command: napari-geff.get_reader
       accepts_directories: true
-      filename_patterns: ['*.zarr']
+      filename_patterns: ['*']
   writers:
     - command: napari-geff.write_multiple
       layer_types: ['image*','labels*']
