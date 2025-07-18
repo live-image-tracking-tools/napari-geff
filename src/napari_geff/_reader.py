@@ -15,6 +15,7 @@ from typing import Any, Union
 import geff
 import networkx as nx
 import pandas as pd
+import pydantic
 import zarr
 from geff import GeffMetadata
 from geff.utils import validate
@@ -46,7 +47,7 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
 
     try:
         validate(path)
-    except AssertionError:
+    except (AssertionError, pydantic.ValidationError):
         return None
 
     graph = zarr.open(path, mode="r")
@@ -54,7 +55,7 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
     # graph attrs validation
     # Raises pydantic.ValidationError or ValueError
     meta = GeffMetadata(**graph.attrs)
-    if meta.position_attr is None and meta.axis_names is None:
+    if meta.position_prop is None and meta.axis_names is None:
         return None
     if not meta.directed:
         return None
@@ -99,11 +100,11 @@ def reader_function(
         )
 
     else:
-        position_attr = nx_graph.graph["position_attr"]
+        position_prop = nx_graph.graph["position_prop"]
         tracks = pd.DataFrame(
             [
                 [node_id, node_to_tid[node_id], data["t"]]
-                + data[position_attr]
+                + data[position_prop]
                 for node_id, data in nx_graph.nodes(data=True)
             ]
         )

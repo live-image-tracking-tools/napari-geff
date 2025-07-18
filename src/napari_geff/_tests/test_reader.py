@@ -1,31 +1,40 @@
 import numpy as np
+import zarr
 
 from napari_geff import get_geff_reader
 
 
-# tmp_path is a pytest fixture
-def test_reader(tmp_path):
-    """An example of how you might test your plugin."""
-
-    # write some fake data using your supported file format
-    my_test_file = str(tmp_path / "myfile.npy")
-    original_data = np.random.rand(20, 20)
-    np.save(my_test_file, original_data)
-
-    # try to read it back in
-    reader = get_geff_reader(my_test_file)
-    assert callable(reader)
-
-    # make sure we're delivering the right format
-    layer_data_list = reader(my_test_file)
-    assert isinstance(layer_data_list, list) and len(layer_data_list) > 0
-    layer_data_tuple = layer_data_list[0]
-    assert isinstance(layer_data_tuple, tuple) and len(layer_data_tuple) > 0
-
-    # make sure it's the same as it started
-    np.testing.assert_allclose(original_data, layer_data_tuple[0])
-
-
-def test_get_reader_pass():
-    reader = get_geff_reader("fake.file")
+def test_reader_invalid_file(tmp_path):
+    """Test that the reader returns None for an invalid file"""
+    invalid_path = tmp_path / "invalid.zarr"
+    reader = get_geff_reader(invalid_path)
     assert reader is None
+
+
+def test_reader_valid_file(path_w_expected_graph_props):
+    """Test valid file gets reader function"""
+    written_path = path_w_expected_graph_props()
+    reader = get_geff_reader(written_path)
+    assert callable(reader), "Reader should be callable for valid geff file"
+
+
+def test_reader_geff_no_axes(tmp_path, path_w_expected_graph_props):
+    """Test that the reader returns None for a geff file without axes"""
+    written_path, props = path_w_expected_graph_props(
+        np.uint16,
+        {"position": np.float32},
+        {"score": np.float32, "color": np.uint8},
+        directed=True,
+    )
+    # read zattrs file and delete pos and axis_names attributes
+    # then write it back out
+    graph = zarr.open(written_path, mode="a")
+    del graph.attrs["axis_names"]
+    del graph.attrs["position_prop"]
+    del graph.attrs["axis_units"]
+    del graph.attrs["roi_min"]
+    del graph.attrs["roi_max"]
+    reader = get_geff_reader(written_path)
+    assert (
+        reader is None
+    ), "Reader should return None for geff file without spatial data"
