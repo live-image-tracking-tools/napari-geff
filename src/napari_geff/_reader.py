@@ -107,19 +107,16 @@ def reader_function(path):
     tracks.sort_values(by=['track_id', 't'], inplace=True)
     tracks['track_id'] = tracks['track_id'].astype(int)
 
-    tracks_napari = tracks[['track_id', 't'] + axis_names]
+    tracks_napari = tracks[['track_id', 't'] + axis_names] # for napari tracks layer,
 
     points = tracks[["t"] + axis_names].values
     metadata = {"nx_graph": nx_graph}
 
-    points_features = {
-        "track_id": tracks['track_id'].values,
-        "node_id": tracks['node_id'].values
-    }
+    points_features = tracks[["track_id", "node_id"]]
 
     return [
         (tracks_napari, {"graph": track_graph, "name": "Tracks", "metadata": metadata}, "tracks"),
-        (points, {"name": "Points", "metadata": {"nx_graph": metadata}, "features": points_features}, "points")
+        (points, {"name": "Points", "metadata": metadata, "features": points_features}, "points")
     ]
 
 
