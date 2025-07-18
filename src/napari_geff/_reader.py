@@ -91,28 +91,35 @@ def reader_function(path):
     if "axis_names" in nx_graph.graph:
         axis_names = list(nx_graph.graph["axis_names"])
         tracks = pd.DataFrame(
-            [[node_to_tid[node_id], data['t']] + [data[axis_name] for axis_name in axis_names] for node_id, data in nx_graph.nodes(data=True)]
+            [[node_id, node_to_tid[node_id], data['t']] + [data[axis_name] for axis_name in axis_names] for node_id, data in nx_graph.nodes(data=True)]
         )
 
     else:
         position_attr = nx_graph.graph["position_attr"]
         tracks = pd.DataFrame(
-            [[node_to_tid[node_id], data['t']] + data[position_attr] for node_id, data in
+            [[node_id, node_to_tid[node_id], data['t']] + data[position_attr] for node_id, data in
              nx_graph.nodes(data=True)]
         )
-        position_ndim = tracks.ndim - 2 # because one for t and one for track_id
+        position_ndim = tracks.ndim - 3 # because one for node_id, t, track_id
         axis_names = [f"axis_{i}" for i in range(position_ndim)]
 
-    tracks.columns = ['track_id', 't'] + axis_names
+    tracks.columns = ['node_id', 'track_id', 't'] + axis_names
     tracks.sort_values(by=['track_id', 't'], inplace=True)
     tracks['track_id'] = tracks['track_id'].astype(int)
+
+    tracks_napari = tracks[['track_id', 't'] + axis_names]
 
     points = tracks[["t"] + axis_names].values
     metadata = {"nx_graph": nx_graph}
 
+    points_features = {
+        "track_id": tracks['track_id'].values,
+        "node_id": tracks['node_id'].values
+    }
+
     return [
-        (tracks, {"graph": track_graph, "name": "Tracks", "metadata": metadata}, "tracks"),
-        (points, {"name": "Points", "metadata": {"nx_graph": metadata}}, "points")
+        (tracks_napari, {"graph": track_graph, "name": "Tracks", "metadata": metadata}, "tracks"),
+        (points, {"name": "Points", "metadata": {"nx_graph": metadata}, "features": points_features}, "points")
     ]
 
 
