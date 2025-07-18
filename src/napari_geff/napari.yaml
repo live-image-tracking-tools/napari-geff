@@ -15,22 +15,10 @@ contributions:
     - id: napari-geff.write_single_image
       python_name: napari_geff._writer:write_single_image
       title: Save image data with Geff IO
-    - id: napari-geff.make_container_widget
-      python_name: napari_geff:ImageThreshold
-      title: Make threshold Container widget
-    - id: napari-geff.make_magic_widget
-      python_name: napari_geff:threshold_magic_widget
-      title: Make threshold magic widget
-    - id: napari-geff.make_function_widget
-      python_name: napari_geff:threshold_autogenerate_widget
-      title: Make threshold function widget
-    - id: napari-geff.make_qwidget
-      python_name: napari_geff:ExampleQWidget
-      title: Make example QWidget
   readers:
     - command: napari-geff.get_reader
-      accepts_directories: false
-      filename_patterns: ['*.npy']
+      accepts_directories: true
+      filename_patterns: ['*.zarr']
   writers:
     - command: napari-geff.write_multiple
       layer_types: ['image*','labels*']
@@ -38,13 +26,3 @@ contributions:
     - command: napari-geff.write_single_image
       layer_types: ['image']
       filename_extensions: ['.npy']
-  widgets:
-    - command: napari-geff.make_container_widget
-      display_name: Container Threshold
-    - command: napari-geff.make_magic_widget
-      display_name: Magic Threshold
-    - command: napari-geff.make_function_widget
-      autogenerate: true
-      display_name: Autogenerate Threshold
-    - command: napari-geff.make_qwidget
-      display_name: Example QWidget
