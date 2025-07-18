@@ -5,8 +5,14 @@ It implements the Reader specification, but your plugin may choose to
 implement multiple readers or even other plugin contributions. see:
 https://napari.org/stable/plugins/building_a_plugin/guides.html#readers
 """
+import geff
 import numpy as np
-
+from geff.utils import validate
+from geff import GeffMetadata
+import zarr
+import networkx as nx
+from collections import defaultdict
+import pandas as pd
 
 def napari_get_reader(path):
     """A basic implementation of a Reader contribution.
@@ -28,8 +34,19 @@ def napari_get_reader(path):
         # so we are only going to look at the first file.
         path = path[0]
 
-    # if we know we cannot read the file, we immediately return None.
-    if not path.endswith(".npy"):
+    try:
+        validate(path)
+    except Exception:
+        return None
+
+    graph = zarr.open(path, mode="r")
+
+    # graph attrs validation
+    # Raises pydantic.ValidationError or ValueError
+    meta = GeffMetadata(**graph.attrs)
+    if meta.position_attr is None and meta.axis_names is None:
+        return None
+    if not meta.directed:
         return None
 
     # otherwise we return the *function* that can read ``path``.
@@ -60,13 +77,86 @@ def reader_function(path):
     """
     # handle both a string and a list of strings
     paths = [path] if isinstance(path, str) else path
-    # load all files into array
-    arrays = [np.load(_path) for _path in paths]
-    # stack arrays into single array
-    data = np.squeeze(np.stack(arrays))
 
-    # optional kwargs for the corresponding viewer.add_* method
-    add_kwargs = {}
+    path = paths[0]
 
-    layer_type = "image"  # optional, default is "image"
-    return [(data, add_kwargs, layer_type)]
+    nx_graph = geff.read_nx(path, validate = False)
+    node_to_tid, track_graph = get_tracklets(nx_graph)
+
+    #points = np.array(
+    #    [[node_to_tid[node_id], data['t'], data['y'], data['x']] for node_id, data in G_hela.nodes(data=True)])
+    #points = pd.DataFrame(points, columns=['track_id', 't', 'y', 'x'])
+    #points['track_id'] = points['track_id'].astype(int)
+
+    if "axis_names" in nx_graph.graph:
+        axis_names = list(nx_graph.graph["axis_names"])
+        tracks = np.array(
+            [[node_to_tid[node_id], data['t']] + [data[axis_name] for axis_name in axis_names] for node_id, data in nx_graph.nodes(data=True)])
+    else:
+        position_attr = nx_graph.graph["position_attr"]
+        tracks = np.array(
+            [[node_to_tid[node_id], data['t']] + data[position_attr] for node_id, data in
+             nx_graph.nodes(data=True)])
+        position_ndim = tracks.ndim - 2 # because one for t and one for track_id
+        axis_names = [f"axis_{i}" for i in range(position_ndim)]
+
+    tracks = pd.DataFrame(tracks, columns=['track_id', 't'] + axis_names)
+    tracks['track_id'] = tracks['track_id'].astype(int)
+
+    points = tracks[["t"] + axis_names].values
+
+    return [
+        (tracks, {"graph": track_graph, "name": "Tracks"}, "tracks"),
+        (points, {"name": "Points"}, "points")
+    ]
+
+
+def get_tracklets(graph: nx.DiGraph):
+    track_id = 1
+    visited_nodes = set()
+    node_to_tid = {}
+    parent_graph = defaultdict(list)
+
+    for node in graph.nodes():
+        if node in visited_nodes:
+            continue
+
+        start_node = node
+        while graph.in_degree(start_node) == 1:
+            predecessor = list(graph.predecessors(start_node))[0]
+            if predecessor in visited_nodes:
+                break
+            start_node = predecessor
+
+        current_tracklet = []
+        temp_node = start_node
+        while True:
+            current_tracklet.append(temp_node)
+            visited_nodes.add(temp_node)
+
+            if graph.out_degree(temp_node) != 1:
+
+                for child in graph.successors(temp_node):
+                    parent_graph[child].append(temp_node)
+                break
+
+            successor = list(graph.successors(temp_node))[0]
+
+            if graph.in_degree(successor) != 1:
+                parent_graph[successor].append(temp_node)
+                break
+
+            temp_node = successor
+
+        for node_id in current_tracklet:
+            node_to_tid[node_id] = track_id
+
+        track_id += 1
+
+    track_graph = {
+        node_to_tid[node_id]: [node_to_tid[node_id_]
+                               for node_id_ in parents]
+        for node_id, parents in parent_graph.items()
+    }
+
+    return node_to_tid, track_graph
