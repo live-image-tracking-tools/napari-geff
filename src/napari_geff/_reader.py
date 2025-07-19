@@ -101,7 +101,11 @@ def reader_function(
     tracks_napari = node_data_df[
         ["track_id", "t"] + list(nx_graph.graph.get("axis_names", []))
     ]
-    metadata = {"nx_graph": nx_graph}
+
+    metadata = {
+        "nx_graph": nx_graph,
+        "edge_properties": nx.to_pandas_edgelist(nx_graph),
+    }
     return [
         (
             tracks_napari,
