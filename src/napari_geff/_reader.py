@@ -89,36 +89,46 @@ def reader_function(
     nx_graph = geff.read_nx(path, validate=False)
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
+    node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
+    # initial dataframe will have `node_id` column and column containing dictionary of other attributes
+    # this line splits out the dictionary into separate columns
+    node_data_df = pd.concat(
+        [node_data_df.drop(columns=[1]), node_data_df[1].apply(pd.Series)],
+        axis=1,
+    )
+    node_data_df.rename(columns={0: "node_id"}, inplace=True)
+    node_data_df["track_id"] = node_data_df["node_id"].map(node_to_tid)
+
     axes = nx_graph.graph["axes"]
     time_axis_name = None
-    axis_names = []
+    spatial_axes_names = []
     for axis in axes:
         if axis.type == "time":
             time_axis_name = axis.name
         elif axis.type == "space":
-            axis_names.append(axis.name)
-    time_axis_list = [time_axis_name] if time_axis_name else []
-    tracks = pd.DataFrame(
-        [
-            [node_id, node_to_tid[node_id]]
-            + ([data[time_axis_name]] if time_axis_name else [])
-            + [data[axis_name] for axis_name in axis_names]
-            for node_id, data in nx_graph.nodes(data=True)
-        ]
-    )
+            spatial_axes_names.append(axis.name)
 
-    tracks.columns = ["node_id", "track_id"] + time_axis_list + axis_names
-    tracks.sort_values(by=["track_id"] + time_axis_list, inplace=True)
-    tracks["track_id"] = tracks["track_id"].astype(int)
+    tracks_napari = node_data_df[
+        (
+            ["track_id"]
+            + ([time_axis_name] if time_axis_name else [])
+            + spatial_axes_names
+        )
+    ]
 
-    tracks_napari = tracks[["track_id"] + time_axis_list + axis_names]
-
-    metadata = {"nx_graph": nx_graph}
-
+    metadata = {
+        "nx_graph": nx_graph,
+        "edge_properties": nx.to_pandas_edgelist(nx_graph),
+    }
     return [
         (
             tracks_napari,
-            {"graph": track_graph, "name": "Tracks", "metadata": metadata},
+            {
+                "graph": track_graph,
+                "name": "Tracks",
+                "metadata": metadata,
+                "features": node_data_df,
+            },
             "tracks",
         ),
     ]
