@@ -53,8 +53,8 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
 
     # graph attrs validation
     # Raises pydantic.ValidationError or ValueError
-    meta = GeffMetadata(**graph.attrs)
-    if meta.position_attr is None and meta.axis_names is None:
+    meta = GeffMetadata(**graph.attrs["geff"])
+    if meta.position_prop is None and meta.axis_names is None:
         return None
     if not meta.directed:
         return None
