@@ -54,8 +54,8 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
 
     # graph attrs validation
     # Raises pydantic.ValidationError or ValueError
-    meta = GeffMetadata(**graph.attrs)
-    if meta.position_prop is None and meta.axis_names is None:
+    meta = GeffMetadata(**graph.attrs["geff"])
+    if meta.axes is None:
         return None
     if not meta.directed:
         return None
@@ -89,33 +89,29 @@ def reader_function(
     nx_graph = geff.read_nx(path, validate=False)
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
-    if "axis_names" in nx_graph.graph:
-        axis_names = list(nx_graph.graph["axis_names"])
-        tracks = pd.DataFrame(
-            [
-                [node_id, node_to_tid[node_id], data["t"]]
-                + [data[axis_name] for axis_name in axis_names]
-                for node_id, data in nx_graph.nodes(data=True)
-            ]
-        )
+    axes = nx_graph.graph["axes"]
+    time_axis_name = None
+    axis_names = []
+    for axis in axes:
+        if axis.type == "time":
+            time_axis_name = axis.name
+        elif axis.type == "space":
+            axis_names.append(axis.name)
+    time_axis_list = [time_axis_name] if time_axis_name else []
+    tracks = pd.DataFrame(
+        [
+            [node_id, node_to_tid[node_id]]
+            + ([data[time_axis_name]] if time_axis_name else [])
+            + [data[axis_name] for axis_name in axis_names]
+            for node_id, data in nx_graph.nodes(data=True)
+        ]
+    )
 
-    else:
-        position_prop = nx_graph.graph["position_prop"]
-        tracks = pd.DataFrame(
-            [
-                [node_id, node_to_tid[node_id], data["t"]]
-                + data[position_prop]
-                for node_id, data in nx_graph.nodes(data=True)
-            ]
-        )
-        position_ndim = tracks.ndim - 3  # because one for node_id, t, track_id
-        axis_names = [f"axis_{i}" for i in range(position_ndim)]
-
-    tracks.columns = ["node_id", "track_id", "t"] + axis_names
-    tracks.sort_values(by=["track_id", "t"], inplace=True)
+    tracks.columns = ["node_id", "track_id"] + time_axis_list + axis_names
+    tracks.sort_values(by=["track_id"] + time_axis_list, inplace=True)
     tracks["track_id"] = tracks["track_id"].astype(int)
 
-    tracks_napari = tracks[["track_id", "t"] + axis_names]
+    tracks_napari = tracks[["track_id"] + time_axis_list + axis_names]
 
     metadata = {"nx_graph": nx_graph}
 
