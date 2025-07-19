@@ -101,7 +101,7 @@ def reader_function(
         [node_data_df.drop(columns=[1]), expanded_cols_df],
         axis=1,
     )
-    node_data_df["track_id"] = node_data_df["node_id"].map(node_to_tid)
+    node_data_df["napari_track_id"] = node_data_df["node_id"].map(node_to_tid)
 
     axes = nx_graph.graph["axes"]
     time_axis_name = None
@@ -114,7 +114,7 @@ def reader_function(
 
     tracks_napari = node_data_df[
         (
-            ["track_id"]
+            ["napari_track_id"]
             + ([time_axis_name] if time_axis_name else [])
             + spatial_axes_names
         )
