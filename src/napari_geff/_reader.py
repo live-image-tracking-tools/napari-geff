@@ -114,7 +114,11 @@ def reader_function(
             + spatial_axes_names
         )
     ]
-    metadata = {"nx_graph": nx_graph}
+
+    metadata = {
+        "nx_graph": nx_graph,
+        "edge_properties": nx.to_pandas_edgelist(nx_graph),
+    }
     return [
         (
             tracks_napari,
