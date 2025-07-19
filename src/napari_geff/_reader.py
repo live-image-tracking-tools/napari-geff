@@ -15,6 +15,7 @@ from typing import Any, Union
 import geff
 import networkx as nx
 import pandas as pd
+import pydantic
 import zarr
 from geff import GeffMetadata
 from geff.utils import validate
@@ -46,7 +47,7 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
 
     try:
         validate(path)
-    except AssertionError:
+    except (AssertionError, pydantic.ValidationError):
         return None
 
     graph = zarr.open(path, mode="r")
