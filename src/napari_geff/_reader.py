@@ -89,13 +89,18 @@ def reader_function(
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
     node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
-    # initial dataframe will have `node_id` column and column containing dictionary of other attributes
-    # this line splits out the dictionary into separate columns
+    node_data_df.rename(columns={0: "node_id"}, inplace=True)
+
+    # Expand the 'props' column into multiple columns, don't use apply(pd.Series) on each row, since dtype won't be preserved
+    expanded_cols_df = pd.DataFrame(
+        node_data_df[1].tolist(), index=node_data_df.index
+    )
+
+    # Drop tbe original column of property dicts, and concat with the node_id
     node_data_df = pd.concat(
-        [node_data_df.drop(columns=[1]), node_data_df[1].apply(pd.Series)],
+        [node_data_df.drop(columns=[1]), expanded_cols_df],
         axis=1,
     )
-    node_data_df.rename(columns={0: "node_id"}, inplace=True)
     node_data_df["track_id"] = node_data_df["node_id"].map(node_to_tid)
 
     axes = nx_graph.graph["axes"]
