@@ -54,7 +54,7 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
     # graph attrs validation
     # Raises pydantic.ValidationError or ValueError
     meta = GeffMetadata(**graph.attrs["geff"])
-    if meta.position_prop is None and meta.axis_names is None:
+    if meta.axes is None:
         return None
     if not meta.directed:
         return None
@@ -98,8 +98,21 @@ def reader_function(
     node_data_df.rename(columns={0: "node_id"}, inplace=True)
     node_data_df["track_id"] = node_data_df["node_id"].map(node_to_tid)
 
+    axes = nx_graph.graph["axes"]
+    time_axis_name = None
+    spatial_axes_names = []
+    for axis in axes:
+        if axis.type == "time":
+            time_axis_name = axis.name
+        elif axis.type == "space":
+            spatial_axes_names.append(axis.name)
+
     tracks_napari = node_data_df[
-        ["track_id", "t"] + list(nx_graph.graph.get("axis_names", []))
+        (
+            ["track_id"]
+            + ([time_axis_name] if time_axis_name else [])
+            + spatial_axes_names
+        )
     ]
 
     metadata = {
