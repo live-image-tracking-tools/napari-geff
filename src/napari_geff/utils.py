@@ -28,7 +28,7 @@ def get_tracks_layer_df(tracks_layer: napari.layers.Tracks) -> pd.DataFrame:
         ]
         return tracks_layer_df
     else:
-        axis_names = ["t"] + list(tracks_layer.axis_labels)[1:]
+        axis_names = list(tracks_layer.axis_labels)
         tracks_layer_df = pd.DataFrame(
             tracks_layer.data,
             columns=["napari_track_id"] + axis_names,
