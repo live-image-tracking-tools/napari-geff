@@ -46,3 +46,71 @@ def get_tracks_layer_df(
         # Since no metadata, use index as node id. TODO maybe allow user to specify a node id in features or metadata
         tracks_layer_df["node_id"] = tracks_layer_df.index
         return tracks_layer_df, axis_names, axis_types
+
+
+def edges_from_tracks_layer(
+    tracks_layer: napari.layers.Tracks,
+) -> pd.DataFrame:
+    """Creates a minimal edge list dataframe from the tracks layer data.
+    Requires napari_track_id, and node_id_columns.
+
+    Parameters
+    ----------
+    tracks_layer_data :
+        DataFrame containing the track data assuming columns are track_id, time, and spatial axes in that order.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the edges of the tracks.
+    """
+
+    tracks_layer_data, axis_names, axis_types = get_tracks_layer_df(
+        tracks_layer
+    )
+
+    edges = []
+
+    # Get the name of the time axis
+    t_axis = axis_names[axis_types.index("time")]
+
+    tracks_layer_data.sort_values(by=["napari_track_id", t_axis], inplace=True)
+
+    # First do the intra-tracklet edges
+    for _tid, track_df in tracks_layer_data.groupby("napari_track_id"):
+
+        nodes = track_df["node_id"].tolist()
+
+        # add source and target nodes
+        for node1, node2 in zip(nodes[:-1], nodes[1:], strict=False):
+            edges.append({"source": node1, "target": node2})
+
+    # Next get the splits and merges from the graph dictionary
+    if tracks_layer.graph:
+
+        tracklet_extrema = {
+            tid: {
+                "first": tracklet_df["node_id"].iloc[
+                    0
+                ],  # it works because they're sorteed by time
+                "last": tracklet_df["node_id"].iloc[-1],
+            }
+            for tid, tracklet_df in tracks_layer_data.groupby(
+                "napari_track_id"
+            )
+        }
+
+        for (
+            daughter_tracklet_id,
+            parent_tracklet_ids,
+        ) in tracks_layer.graph.items():
+            for parent_tracklet_id in parent_tracklet_ids:
+                edges.append(
+                    {
+                        "source": tracklet_extrema[parent_tracklet_id]["last"],
+                        "target": tracklet_extrema[daughter_tracklet_id][
+                            "first"
+                        ],
+                    }
+                )
+    return pd.DataFrame(edges)
