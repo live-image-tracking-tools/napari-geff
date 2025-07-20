@@ -9,20 +9,14 @@ contributions:
     - id: napari-geff.get_reader
       python_name: napari_geff._reader:get_geff_reader
       title: Open data with Geff IO
-    - id: napari-geff.write_multiple
-      python_name: napari_geff._writer:write_multiple
-      title: Save multi-layer data with Geff IO
-    - id: napari-geff.write_single_image
-      python_name: napari_geff._writer:write_single_image
-      title: Save image data with Geff IO
+    - id: napari-geff.write
+      python_name: napari_geff._writer:write_tracks
+      title: Save data with Geff IO
   readers:
     - command: napari-geff.get_reader
       accepts_directories: true
       filename_patterns: ['*']
   writers:
-    - command: napari-geff.write_multiple
-      layer_types: ['image*','labels*']
-      filename_extensions: []
-    - command: napari-geff.write_single_image
-      layer_types: ['image']
-      filename_extensions: ['.npy']
+    - command: napari-geff.write
+      layer_types: ['tracks']
+      filename_extensions: ['.geff']
