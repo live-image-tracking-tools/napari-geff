@@ -1,6 +1,7 @@
 from typing import Optional
 
 import napari
+import networkx as nx
 import pandas as pd
 
 
@@ -33,6 +34,31 @@ def get_axis_names_and_types(
         axis_types = ["time"] + ["space"] * (len(axis_names) - 1)
 
     return axis_names, axis_types
+
+
+def nx_from_tracks_layer(
+    tracks_layer: napari.layers.Tracks,
+) -> nx.DiGraph:
+    """
+    Create a networkx directed graph from a napari Tracks layer.
+    """
+    edges_df = edges_from_tracks_layer(tracks_layer)
+    nx_graph = nx.from_pandas_edgelist(edges_df, create_using=nx.DiGraph())
+
+    axis_names, axis_types = get_axis_names_and_types(tracks_layer)
+
+    tracks_layer_data = get_tracks_layer_df(tracks_layer)
+
+    node_axis_properties = (
+        tracks_layer_data.loc[:, axis_names + ["node_id"]]
+        .set_index("node_id")
+        .to_dict(orient="index")
+    )
+    nx.set_node_attributes(
+        nx_graph, node_axis_properties
+    )  # TODO edge attributes and other node attributes
+
+    return nx_graph
 
 
 def get_tracks_layer_df(
