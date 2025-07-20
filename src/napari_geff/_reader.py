@@ -86,7 +86,7 @@ def reader_function(
 
     path = paths[0]
 
-    nx_graph = geff.read_nx(path, validate=False)
+    nx_graph, geff_metadata = geff.read_nx(path, validate=False)
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
     node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
@@ -124,6 +124,7 @@ def reader_function(
     metadata = {
         "nx_graph": nx_graph,
         "edge_properties": nx.to_pandas_edgelist(nx_graph),
+        "geff_metadata": geff_metadata,
     }
     return [
         (
