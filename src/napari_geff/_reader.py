@@ -104,7 +104,7 @@ def reader_function(
     )
     node_data_df["napari_track_id"] = node_data_df["node_id"].map(node_to_tid)
 
-    axes = nx_graph.graph["axes"]
+    axes = geff_metadata.axes
     time_axis_name = None
     spatial_axes_names = []
     for axis in axes:
