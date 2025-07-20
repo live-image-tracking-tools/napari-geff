@@ -120,6 +120,9 @@ def reader_function(
             + spatial_axes_names
         )
     ]
+    tracks_napari.sort_values(
+        by=["napari_track_id", "t"], inplace=True
+    )  # Just in case
 
     metadata = {
         "nx_graph": nx_graph,
