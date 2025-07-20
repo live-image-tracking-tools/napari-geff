@@ -20,15 +20,15 @@ def get_tracks_layer_df(tracks_layer: napari.layers.Tracks) -> pd.DataFrame:
         axis_names = [
             axis.name for axis in tracks_layer.metadata["geff_metadata"].axes
         ]
-        assert "t" in axis_names, "Tracks layer must have a time axis"
+        assert "time" in [
+            axis.type for axis in tracks_layer.metadata["geff_metadata"].axes
+        ], "Tracks layer must have a time axis"
         tracks_layer_df = tracks_layer.features[
             ["napari_track_id"] + axis_names
         ]
         return tracks_layer_df
     else:
-        axis_names = ["t"] + [
-            f"axis_{x}" for x in range(tracks_layer.data.shape[1] - 2)
-        ]  # napari
+        axis_names = ["t"] + list(tracks_layer.axis_labels)[1:]
         tracks_layer_df = pd.DataFrame(
             tracks_layer.data,
             columns=["napari_track_id"] + axis_names,
