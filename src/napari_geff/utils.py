@@ -1,3 +1,5 @@
+from typing import Optional
+
 import napari
 import pandas as pd
 
@@ -114,3 +116,27 @@ def edges_from_tracks_layer(
                     }
                 )
     return pd.DataFrame(edges)
+
+
+def add_tracks_layer_from_sample(
+    viewer: napari.Viewer,
+    tracks_layer_data: pd.DataFrame,
+    tracklets_graph: Optional[dict] = None,
+) -> None:
+    """Add a tracks layer to the napari viewer from a sample Tracks layer
+    using the minimal amount of data required.
+
+    Parameters
+    ----------
+    viewer :
+        The napari viewer to add the layer to.
+    tracks_layer_data :
+        DataFrame containing the track data assuming columns are track_id, time, and spatial axes. in that order
+    tracklets_graph :
+        The tracks graph that napari expects for merges and splits
+    """
+    viewer.add_tracks(
+        data=tracks_layer_data,
+        name="Tracks",
+        graph=tracklets_graph,
+    )
