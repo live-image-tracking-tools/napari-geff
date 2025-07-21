@@ -46,6 +46,70 @@ def test_reader_geff_no_axes(tmp_path, path_w_expected_graph_props):
     ), "Reader should return None for geff file without spatial data"
 
 
+def test_reader_geff_no_time_axis(tmp_path, path_w_expected_graph_props):
+    """
+    Test that the reader returns None for a geff file with no time axis
+    """
+    # Use the fixture to create a valid file
+    written_path, _ = path_w_expected_graph_props(
+        np.uint16,
+        {"position": "double"},
+        {"score": np.float32, "color": np.uint8},
+        directed=True,
+    )
+
+    # Open the zarr store to manipulate its attributes
+    zarr_group = zarr.open(str(written_path), mode="a")
+    original_axes = zarr_group.attrs["geff"]["axes"]
+
+    # Create a new list of axes containing only the spatial ones
+    spatial_axes_only = [
+        axis for axis in original_axes if axis.get("type") != "time"
+    ]
+    zarr_group.attrs["geff"]["axes"] = spatial_axes_only
+
+    # Write the modified attributes back to the .zattrs file
+    with open(written_path / ".zattrs", "w") as f:
+        json.dump(dict(zarr_group.attrs), f)
+
+    # The reader should reject this file
+    reader = get_geff_reader(str(written_path))
+    assert reader is None, "Reader should be None for file without a time axis"
+
+
+def test_reader_geff_no_space_axes(tmp_path, path_w_expected_graph_props):
+    """
+    Test that the reader returns None for a geff with no spatial axes
+    """
+    # Use the fixture to create a valid file
+    written_path, _ = path_w_expected_graph_props(
+        np.uint16,
+        {"position": "double"},
+        {"score": np.float32, "color": np.uint8},
+        directed=True,
+    )
+
+    # Open the zarr store to manipulate its attributes
+    zarr_group = zarr.open(str(written_path), mode="a")
+    original_axes = zarr_group.attrs["geff"]["axes"]
+
+    # Create a new list of axes containing only the time axis
+    time_axis_only = [
+        axis for axis in original_axes if axis.get("type") != "space"
+    ]
+    zarr_group.attrs["geff"]["axes"] = time_axis_only
+
+    # Write the modified attributes back to the .zattrs file
+    with open(written_path / ".zattrs", "w") as f:
+        json.dump(dict(zarr_group.attrs), f)
+
+    # The reader should reject this file
+    reader = get_geff_reader(str(written_path))
+    assert (
+        reader is None
+    ), "Reader should be None for file without spatial axes"
+
+
 def test_reader_loads_layer(path_w_expected_graph_props):
     """Test the reader returns a tracks layer"""
     written_path, props = path_w_expected_graph_props(
