@@ -64,7 +64,7 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
 
 
 def reader_function(
-    path: Union[str, list[str]]
+    path: Union[str, list[str]],
 ) -> list[tuple[pd.DataFrame, dict[str, Any], str]]:
     """Read geff file at path and return `Tracks` layer data tuple.
 
