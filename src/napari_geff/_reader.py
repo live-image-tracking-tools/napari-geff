@@ -57,6 +57,12 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
     meta = GeffMetadata(**graph.attrs["geff"])
     if meta.axes is None:
         return None
+    has_time_axis = any(axis.type == "time" for axis in meta.axes)
+    if not has_time_axis:
+        return None  # Reject if no time axis is found, because tracks layers require time
+    has_spatial_axes = any(axis.type == "space" for axis in meta.axes)
+    if not has_spatial_axes:
+        return None  # One also needs a spatial axis for napari tracks
     if not meta.directed:
         return None
 
@@ -121,7 +127,7 @@ def reader_function(
         )
     ]
     tracks_napari.sort_values(
-        by=["napari_track_id", "t"], inplace=True
+        by=["napari_track_id", time_axis_name], inplace=True
     )  # Just in case
 
     metadata = {
