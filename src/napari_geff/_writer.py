@@ -60,6 +60,7 @@ def write_tracks(path: str, data: Any, meta: dict) -> list[str]:
         edges_df=edge_df,
         axis_names=axis_names,
         axis_types=axis_types,
+        edge_properties=layer_metadata.get("edge_properties", None),
     )
 
     write_nx(
@@ -132,20 +133,34 @@ def create_nx_graph(
     edges_df: pd.DataFrame,
     axis_names: list[str],
     axis_types: list[str],
+    edge_properties: dict[str, Any] | None = None,
 ) -> nx.DiGraph:
     """
     Create a networkx directed graph from a napari Tracks layer.
     """
-    nx_graph = nx.from_pandas_edgelist(edges_df, create_using=nx.DiGraph())
 
+    nx_graph = nx.from_pandas_edgelist(
+        edges_df, create_using=nx.DiGraph(), edge_attr=None
+    )  # Don't pass in edge attrs here, otherwise you build the wrong graph
     node_axis_properties = (
-        tracks_layer_data.loc[:, axis_names + ["node_id"]]
+        tracks_layer_data.loc[
+            :,
+            [
+                column
+                for column in tracks_layer_data
+                if "napari_track_id" not in column
+            ],
+        ]
         .set_index("node_id")
         .to_dict(orient="index")
     )
     nx.set_node_attributes(
         nx_graph, node_axis_properties
     )  # TODO edge attributes and other node attributes
+
+    if edge_properties:
+
+        nx.set_edge_attributes(nx_graph, edge_properties)
 
     return nx_graph
 

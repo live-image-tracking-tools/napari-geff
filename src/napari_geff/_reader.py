@@ -132,7 +132,9 @@ def reader_function(
 
     metadata = {
         "nx_graph": nx_graph,
-        "edge_properties": nx.to_pandas_edgelist(nx_graph),
+        "edge_properties": {
+            (u, v): data for u, v, data in nx_graph.edges(data=True)
+        },
         "geff_metadata": geff_metadata,
     }
     return [
