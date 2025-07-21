@@ -57,6 +57,12 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
     meta = GeffMetadata(**graph.attrs["geff"])
     if meta.axes is None:
         return None
+    has_time_axis = any(axis.type == "time" for axis in meta.axes)
+    if not has_time_axis:
+        return None  # Reject if no time axis is found, because tracks layers require time
+    has_spatial_axes = any(axis.type == "space" for axis in meta.axes)
+    if not has_spatial_axes:
+        return None  # One also needs a spatial axis for napari tracks
     if not meta.directed:
         return None
 
@@ -86,7 +92,7 @@ def reader_function(
 
     path = paths[0]
 
-    nx_graph = geff.read_nx(path, validate=False)
+    nx_graph, geff_metadata = geff.read_nx(path, validate=False)
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
     node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
@@ -104,7 +110,7 @@ def reader_function(
     )
     node_data_df["napari_track_id"] = node_data_df["node_id"].map(node_to_tid)
 
-    axes = nx_graph.graph["axes"]
+    axes = geff_metadata.axes
     time_axis_name = None
     spatial_axes_names = []
     for axis in axes:
@@ -120,10 +126,14 @@ def reader_function(
             + spatial_axes_names
         )
     ]
+    tracks_napari.sort_values(
+        by=["napari_track_id", time_axis_name], inplace=True
+    )  # Just in case
 
     metadata = {
         "nx_graph": nx_graph,
         "edge_properties": nx.to_pandas_edgelist(nx_graph),
+        "geff_metadata": geff_metadata,
     }
     return [
         (
