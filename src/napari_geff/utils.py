@@ -1,11 +1,12 @@
 import typing
+from typing import Union
 
 if typing.TYPE_CHECKING:
     import networkx as nx
 
 
 def diff_nx_graphs(
-    g1: nx.Graph | nx.DiGraph, g2: nx.Graph | nx.DiGraph
+    g1: Union["nx.Graph", "nx.DiGraph"], g2: Union["nx.Graph", "nx.DiGraph"]
 ) -> list[tuple[str, ...]]:
     """
     Compares two NetworkX graphs and returns a detailed list of differences,
