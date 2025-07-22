@@ -138,5 +138,5 @@ def test_reader_loads_attrs(path_w_expected_graph_props):
     )
     layer_tuples = reader_function(str(written_path))
     edge_meta = layer_tuples[0][1]["metadata"]["edge_properties"]
-    assert "score" in edge_meta
-    assert "color" in edge_meta
+    assert all((True for _, item in edge_meta.items() if "score" in item))
+    assert all((True for _, item in edge_meta.items() if "color" in item))
