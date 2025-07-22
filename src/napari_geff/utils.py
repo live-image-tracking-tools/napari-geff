@@ -6,22 +6,25 @@ if typing.TYPE_CHECKING:
 
 
 def diff_nx_graphs(
-    g1: Union["nx.Graph", "nx.DiGraph"], g2: Union["nx.Graph", "nx.DiGraph"]
+    g1: Union["nx.Graph", "nx.DiGraph"],
+    g2: Union["nx.Graph", "nx.DiGraph"],
+    check_types: bool = True,
 ) -> list[tuple[str, ...]]:
     """
-    Compares two NetworkX graphs and returns a detailed list of differences,
-    including strict checks for attribute values and data types.
+    Compares two NetworkX graphs and returns a detailed list of differences.
 
     Args:
-        g1 : The first graph to compare.
-        g2 : The second graph to compare.
+        g1: The first graph to compare.
+        g2: The second graph to compare.
+        check_types: If True (default), attribute comparisons will also check
+            for type equality (e.g., int(1) vs float(1.0)). If False, only
+            values are compared.
 
     Returns:
-        list: A list of tuples describing the differences. An empty list means
-              the graphs are identical. The output format for attribute
-              differences is now more granular.
-              - ('node_attribute_diff', node, key, (val1, type1), (val2, type2))
-              - ('edge_attribute_diff', edge, key, (val1, type1), (val2, type2))
+        A list of tuples describing the differences. An empty list means
+        the graphs are identical. The output format includes:
+        - ('node_attribute_diff', node, key, (val1, type1), (val2, type2))
+        - ('edge_attribute_diff', edge, key, (val1, type1), (val2, type2))
     """
     diffs = []
 
@@ -41,14 +44,16 @@ def diff_nx_graphs(
     for node in nodes2 - nodes1:
         diffs.append(("node_missing_from_g1", node))
 
-    # More granular node attribute comparison (value and type)
+    # Granular node attribute comparison
     for node in nodes1 & nodes2:
         attrs1, attrs2 = g1.nodes[node], g2.nodes[node]
         all_keys = set(attrs1.keys()) | set(attrs2.keys())
         for key in all_keys:
             val1, val2 = attrs1.get(key), attrs2.get(key)
-            # Check for difference in value OR type
-            if val1 != val2 or type(val1) != type(val2):
+
+            # Check for difference in value, and optionally type
+            type_mismatch = check_types and type(val1) != type(val2)
+            if val1 != val2 or type_mismatch:
                 type1_str = type(val1).__name__ if key in attrs1 else "N/A"
                 type2_str = type(val2).__name__ if key in attrs2 else "N/A"
                 v1_rep = val1 if key in attrs1 else "<missing>"
@@ -90,7 +95,7 @@ def diff_nx_graphs(
     for edge in canon_edges2 - canon_edges1:
         diffs.append(("edge_missing_from_g1", map2[edge]))
 
-    # Granular edge attribute comparison (value and type)
+    # Granular edge attribute comparison
     for edge in canon_edges1 & canon_edges2:
         orig_edge1, orig_edge2 = map1[edge], map2[edge]
         attrs1 = (
@@ -107,8 +112,10 @@ def diff_nx_graphs(
         all_keys = set(attrs1.keys()) | set(attrs2.keys())
         for key in all_keys:
             val1, val2 = attrs1.get(key), attrs2.get(key)
-            # Check for difference in value OR type
-            if val1 != val2 or type(val1) != type(val2):
+
+            # Check for difference in value, and optionally type
+            type_mismatch = check_types and type(val1) != type(val2)
+            if val1 != val2 or type_mismatch:
                 type1_str = type(val1).__name__ if key in attrs1 else "N/A"
                 type2_str = type(val2).__name__ if key in attrs2 else "N/A"
                 v1_rep = val1 if key in attrs1 else "<missing>"

@@ -152,7 +152,8 @@ def create_nx_graph(
             ],
         ]
         .set_index("node_id")
-        .to_dict(orient="index")
+        .apply(lambda row: row.dropna().to_dict(), axis=1)
+        .to_dict()
     )
     nx.set_node_attributes(nx_graph, node_axis_properties)
 
