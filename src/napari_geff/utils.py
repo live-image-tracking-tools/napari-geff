@@ -1,11 +1,19 @@
-def compare_graphs(g1, g2):
+import typing
+
+if typing.TYPE_CHECKING:
+    import networkx as nx
+
+
+def diff_nx_graphs(
+    g1: nx.Graph | nx.DiGraph, g2: nx.Graph | nx.DiGraph
+) -> list[tuple[str, ...]]:
     """
     Compares two NetworkX graphs and returns a detailed list of differences,
     including strict checks for attribute values and data types.
 
     Args:
-        g1 (networkx.Graph): The first graph to compare.
-        g2 (networkx.Graph): The second graph to compare.
+        g1 : The first graph to compare.
+        g2 : The second graph to compare.
 
     Returns:
         list: A list of tuples describing the differences. An empty list means
