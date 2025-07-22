@@ -14,6 +14,7 @@ from typing import Any, Union
 
 import geff
 import networkx as nx
+import numpy as np
 import pandas as pd
 import pydantic
 import zarr
@@ -137,6 +138,30 @@ def reader_function(
         },
         "geff_metadata": geff_metadata,
     }
+
+    zarrgeff = zarr.open(path, mode="r")
+    np_to_pd_dtype = {
+        np.dtype(np.int8): pd.Int8Dtype(),
+        np.dtype(np.int16): pd.Int16Dtype(),
+        np.dtype(np.int32): pd.Int32Dtype(),
+        np.dtype(np.int64): pd.Int64Dtype(),
+        np.dtype(np.uint8): pd.UInt8Dtype(),
+        np.dtype(np.uint16): pd.UInt16Dtype(),
+        np.dtype(np.uint32): pd.UInt32Dtype(),
+        np.dtype(np.uint64): pd.UInt64Dtype(),
+        np.dtype(np.float32): pd.Float32Dtype(),
+        np.dtype(np.float64): pd.Float64Dtype(),
+        np.dtype(np.bool): pd.BooleanDtype(),
+    }
+    for prop in zarrgeff["nodes"]["props"]:
+        dtype = zarrgeff["nodes"]["props"][prop]["values"].dtype
+        if dtype in np_to_pd_dtype:
+            node_data_df[prop] = node_data_df[prop].astype(
+                np_to_pd_dtype[dtype]
+            )
+        else:
+            pass
+
     return [
         (
             tracks_napari,
