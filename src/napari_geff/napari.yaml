@@ -19,4 +19,4 @@ contributions:
   writers:
     - command: napari-geff.write
       layer_types: ['tracks']
-      filename_extensions: ['.geff']
+      filename_extensions: []

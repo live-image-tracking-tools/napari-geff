@@ -103,7 +103,7 @@ def get_edge_df(
             tid: {
                 "first": tracklet_df["node_id"].iloc[
                     0
-                ],  # it works because they're sorteed by time
+                ],  # it works because they're sorted by time
                 "last": tracklet_df["node_id"].iloc[-1],
             }
             for tid, tracklet_df in tracks_layer_data.groupby(
@@ -163,11 +163,3 @@ def create_nx_graph(
         nx.set_edge_attributes(nx_graph, edge_properties)
 
     return nx_graph
-
-
-def write_multiple():
-    pass
-
-
-def write_single_image():
-    pass
