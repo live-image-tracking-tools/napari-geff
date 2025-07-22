@@ -8,12 +8,15 @@ The original networkx graph read by `geff.read_nx` is stored in the metadata
 attribute on the layer.
 """
 
+import os
 from collections import defaultdict
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Union
 
 import geff
 import networkx as nx
+import numpy as np
 import pandas as pd
 import pydantic
 import zarr
@@ -93,12 +96,45 @@ def reader_function(
     path = paths[0]
 
     nx_graph, geff_metadata = geff.read_nx(path, validate=False)
+
+    layers = []
+    if hasattr(geff_metadata, "related_objects"):
+        related_objects = geff_metadata.related_objects
+        for related_object in related_objects:
+            if related_object.type == "labels":
+                labels_path = Path(path) / related_object.path
+                labels_path = os.path.expanduser(labels_path)
+                labels = zarr.open(labels_path, mode="r")
+                layers.append(
+                    (
+                        labels,
+                        {
+                            "name": "Labels",
+                        },
+                        "labels",
+                    )
+                )
+            if related_object.type == "image":
+                image_path = Path(path) / related_object.path
+                image_path = os.path.expanduser(image_path)
+                image = zarr.open(image_path, mode="r")
+                layers.append(
+                    (
+                        image,
+                        {
+                            "name": "Image",
+                        },
+                        "image",
+                    )
+                )
+
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
     node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
     node_data_df.rename(columns={0: "node_id"}, inplace=True)
 
     # Expand the 'props' column into multiple columns, don't use apply(pd.Series) on each row, since dtype won't be preserved
+    # TODO: they aren't preserved anyway if there's a nan in there
     expanded_cols_df = pd.DataFrame(
         node_data_df[1].tolist(), index=node_data_df.index
     )
@@ -108,8 +144,8 @@ def reader_function(
         [node_data_df.drop(columns=[1]), expanded_cols_df],
         axis=1,
     )
-    node_data_df["napari_track_id"] = node_data_df["node_id"].map(node_to_tid)
 
+    node_data_df["napari_track_id"] = node_data_df["node_id"].map(node_to_tid)
     axes = geff_metadata.axes
     time_axis_name = None
     spatial_axes_names = []
@@ -137,7 +173,31 @@ def reader_function(
         },
         "geff_metadata": geff_metadata,
     }
-    return [
+
+    zarrgeff = zarr.open(path, mode="r")
+    np_to_pd_dtype = {
+        np.dtype(np.int8): pd.Int8Dtype(),
+        np.dtype(np.int16): pd.Int16Dtype(),
+        np.dtype(np.int32): pd.Int32Dtype(),
+        np.dtype(np.int64): pd.Int64Dtype(),
+        np.dtype(np.uint8): pd.UInt8Dtype(),
+        np.dtype(np.uint16): pd.UInt16Dtype(),
+        np.dtype(np.uint32): pd.UInt32Dtype(),
+        np.dtype(np.uint64): pd.UInt64Dtype(),
+        np.dtype(np.float32): pd.Float32Dtype(),
+        np.dtype(np.float64): pd.Float64Dtype(),
+        np.dtype(np.bool): pd.BooleanDtype(),
+    }
+    for prop in zarrgeff["nodes"]["props"]:
+        dtype = zarrgeff["nodes"]["props"][prop]["values"].dtype
+        if dtype in np_to_pd_dtype:
+            node_data_df[prop] = node_data_df[prop].astype(
+                np_to_pd_dtype[dtype]
+            )
+        else:
+            pass
+
+    layers += [
         (
             tracks_napari,
             {
@@ -147,8 +207,10 @@ def reader_function(
                 "features": node_data_df,
             },
             "tracks",
-        ),
+        )
     ]
+
+    return layers
 
 
 def get_tracklets(

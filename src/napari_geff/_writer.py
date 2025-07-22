@@ -62,10 +62,10 @@ def write_tracks(path: str, data: Any, meta: dict) -> list[str]:
         axis_types=axis_types,
         edge_properties=layer_metadata.get("edge_properties", None),
     )
-
     write_nx(
         nx_graph,
         path,
+        layer_metadata.get("geff_metadata", None),
         axis_names=axis_names,
         axis_types=axis_types,
     )
@@ -155,6 +155,7 @@ def create_nx_graph(
         .apply(lambda row: row.dropna().to_dict(), axis=1)
         .to_dict()
     )
+    print(node_axis_properties[11639.0])
     nx.set_node_attributes(nx_graph, node_axis_properties)
 
     if edge_properties:
