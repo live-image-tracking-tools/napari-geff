@@ -119,6 +119,18 @@ def reader_function(
         elif axis.type == "space":
             spatial_axes_names.append(axis.name)
 
+    # if display hints are provided, we make sure our spatial axis names
+    # are ordered accordingly
+    if geff_metadata.display_hints:
+        spatial_axes_names = []
+        display_hints = geff_metadata.display_hints
+        if display_hints.display_depth:
+            spatial_axes_names.append(display_hints.display_depth)
+        if display_hints.display_vertical:
+            spatial_axes_names.append(display_hints.display_vertical)
+        if display_hints.display_horizontal:
+            spatial_axes_names.append(display_hints.display_horizontal)
+
     tracks_napari = node_data_df[
         (
             ["napari_track_id"]
