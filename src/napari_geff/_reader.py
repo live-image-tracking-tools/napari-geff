@@ -121,21 +121,30 @@ def reader_function(
 
     # if display hints are provided, we make sure our spatial axis names
     # are ordered accordingly
+    display_axis_dict = {}
     if geff_metadata.display_hints:
-        spatial_axes_names = []
         display_hints = geff_metadata.display_hints
         if display_hints.display_depth:
-            spatial_axes_names.append(display_hints.display_depth)
+            display_axis_dict["depth"] = display_hints.display_depth
         if display_hints.display_vertical:
-            spatial_axes_names.append(display_hints.display_vertical)
+            display_axis_dict["vertical"] = display_hints.display_vertical
         if display_hints.display_horizontal:
-            spatial_axes_names.append(display_hints.display_horizontal)
+            display_axis_dict["horizontal"] = display_hints.display_horizontal
+    display_axes = []
+    for axis_type in ["depth", "vertical", "horizontal"]:
+        if axis_type in display_axis_dict:
+            display_axes.append(display_axis_dict[axis_type])
+            spatial_axes_names.remove(display_axis_dict[axis_type])
+    display_axes = spatial_axes_names + display_axes
+    # we cannot have more than 3 display axes, so we grab the last three if needed
+    if len(display_axes) > 3:
+        display_axes = display_axes[-3:]
 
     tracks_napari = node_data_df[
         (
             ["napari_track_id"]
             + ([time_axis_name] if time_axis_name else [])
-            + spatial_axes_names
+            + display_axes
         )
     ]
     tracks_napari.sort_values(
