@@ -154,9 +154,7 @@ def create_nx_graph(
         .set_index("node_id")
         .to_dict(orient="index")
     )
-    nx.set_node_attributes(
-        nx_graph, node_axis_properties
-    )  # TODO edge attributes and other node attributes
+    nx.set_node_attributes(nx_graph, node_axis_properties)
 
     if edge_properties:
 
