@@ -100,33 +100,34 @@ def reader_function(
     layers = []
     if hasattr(geff_metadata, "related_objects"):
         related_objects = geff_metadata.related_objects
-        for related_object in related_objects:
-            if related_object.type == "labels":
-                labels_path = Path(path) / related_object.path
-                labels_path = os.path.expanduser(labels_path)
-                labels = zarr.open(labels_path, mode="r")
-                layers.append(
-                    (
-                        labels,
-                        {
-                            "name": "Labels",
-                        },
-                        "labels",
+        if related_objects:
+            for related_object in related_objects:
+                if related_object.type == "labels":
+                    labels_path = Path(path) / related_object.path
+                    labels_path = os.path.expanduser(labels_path)
+                    labels = zarr.open(labels_path, mode="r")
+                    layers.append(
+                        (
+                            labels,
+                            {
+                                "name": "Labels",
+                            },
+                            "labels",
+                        )
                     )
-                )
-            if related_object.type == "image":
-                image_path = Path(path) / related_object.path
-                image_path = os.path.expanduser(image_path)
-                image = zarr.open(image_path, mode="r")
-                layers.append(
-                    (
-                        image,
-                        {
-                            "name": "Image",
-                        },
-                        "image",
+                if related_object.type == "image":
+                    image_path = Path(path) / related_object.path
+                    image_path = os.path.expanduser(image_path)
+                    image = zarr.open(image_path, mode="r")
+                    layers.append(
+                        (
+                            image,
+                            {
+                                "name": "Image",
+                            },
+                            "image",
+                        )
                     )
-                )
 
     node_to_tid, track_graph = get_tracklets(nx_graph)
 

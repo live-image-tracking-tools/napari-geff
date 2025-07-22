@@ -155,7 +155,6 @@ def create_nx_graph(
         .apply(lambda row: row.dropna().to_dict(), axis=1)
         .to_dict()
     )
-    print(node_axis_properties[11639.0])
     nx.set_node_attributes(nx_graph, node_axis_properties)
 
     if edge_properties:
