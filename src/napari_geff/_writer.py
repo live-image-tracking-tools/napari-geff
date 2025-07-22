@@ -162,11 +162,3 @@ def create_nx_graph(
         nx.set_edge_attributes(nx_graph, edge_properties)
 
     return nx_graph
-
-
-def write_multiple():
-    pass
-
-
-def write_single_image():
-    pass

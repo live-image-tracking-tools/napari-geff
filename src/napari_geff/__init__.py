@@ -5,10 +5,5 @@ except ImportError:
 
 
 from ._reader import get_geff_reader
-from ._writer import write_multiple, write_single_image
 
-__all__ = (
-    "get_geff_reader",
-    "write_single_image",
-    "write_multiple",
-)
+__all__ = ("get_geff_reader",)
