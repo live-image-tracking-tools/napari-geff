@@ -47,7 +47,7 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
 
     try:
         validate(path)
-    except (AssertionError, pydantic.ValidationError):
+    except (AssertionError, pydantic.ValidationError, ValueError):
         return None
 
     graph = zarr.open(path, mode="r")
