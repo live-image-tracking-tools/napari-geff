@@ -23,6 +23,9 @@ and review the napari docs for plugin developers:
 https://napari.org/stable/plugins/index.html
 -->
 
+![geff-read](https://github.com/user-attachments/assets/bd3d510e-a9c8-490a-b499-47093f15105d)
+
+
 ## Installation
 
 You can install `napari-geff` via [pip]:
