@@ -79,7 +79,6 @@ def get_edge_df(
     axis_names: list[str],
     axis_types: list[str],
 ) -> pd.DataFrame:
-
     edges = []
 
     # Get the name of the time axis
@@ -89,7 +88,6 @@ def get_edge_df(
 
     # First do the intra-tracklet edges
     for _tid, track_df in tracks_layer_data.groupby("napari_track_id"):
-
         nodes = track_df["node_id"].tolist()
 
         # add source and target nodes
@@ -98,7 +96,6 @@ def get_edge_df(
 
     # Next get the splits and merges from the graph dictionary
     if tracklets_graph:
-
         tracklet_extrema = {
             tid: {
                 "first": tracklet_df["node_id"].iloc[
@@ -158,7 +155,6 @@ def create_nx_graph(
     nx.set_node_attributes(nx_graph, node_axis_properties)
 
     if edge_properties:
-
         nx.set_edge_attributes(nx_graph, edge_properties)
 
     return nx_graph

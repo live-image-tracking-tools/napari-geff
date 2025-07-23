@@ -9,18 +9,18 @@ attribute on the layer.
 """
 
 import os
-from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Union
 
 import geff
-import networkx as nx
 import pandas as pd
 import pydantic
 import zarr
 from geff import GeffMetadata
 from geff.utils import validate
+
+from napari_geff.utils import get_tracklets_nx
 
 
 def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
@@ -128,13 +128,12 @@ def reader_function(
                         )
                     )
 
-    node_to_tid, track_graph = get_tracklets(nx_graph)
+    node_to_tid, track_graph = get_tracklets_nx(nx_graph)
 
     node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
     node_data_df.rename(columns={0: "node_id"}, inplace=True)
 
-    # Expand the 'props' column into multiple columns, don't use apply(pd.Series) on each row, since dtype won't be preserved
-    # TODO: they aren't preserved anyway if there's a nan in there
+    # TODO: types aren't preserved anyway if there's a nan in there
     expanded_cols_df = pd.DataFrame(
         node_data_df[1].tolist(), index=node_data_df.index
     )
@@ -188,72 +187,3 @@ def reader_function(
     ]
 
     return layers
-
-
-def get_tracklets(
-    graph: nx.DiGraph,
-) -> tuple[dict[Any, int], dict[int, list[int]]]:
-    """Extract tracklet IDs and parent-child connections from a directed graph.
-
-    A tracklet consists of a sequence of nodes in the graph connected by edges
-    where the incoming and outgoing degree of each node on the path is at most 1.
-
-    Parameters
-    ----------
-    graph : nx.DiGraph
-        networkx graph of full tracking data
-
-    Returns
-    -------
-    Tuple[Dict[Any, int], Dict[int, List[int]]]
-        A tuple containing:
-        - A dictionary mapping node IDs to tracklet IDs.
-        - A dictionary mapping each node ID to a list of its parent tracklet IDs.
-    """
-    track_id = 1
-    visited_nodes = set()
-    node_to_tid = {}
-    parent_graph = defaultdict(list)
-
-    for node in graph.nodes():
-        if node in visited_nodes:
-            continue
-
-        start_node = node
-        while graph.in_degree(start_node) == 1:
-            predecessor = list(graph.predecessors(start_node))[0]
-            if predecessor in visited_nodes:
-                break
-            start_node = predecessor
-
-        current_tracklet = []
-        temp_node = start_node
-        while True:
-            current_tracklet.append(temp_node)
-            visited_nodes.add(temp_node)
-
-            if graph.out_degree(temp_node) != 1:
-
-                for child in graph.successors(temp_node):
-                    parent_graph[child].append(temp_node)
-                break
-
-            successor = list(graph.successors(temp_node))[0]
-
-            if graph.in_degree(successor) != 1:
-                parent_graph[successor].append(temp_node)
-                break
-
-            temp_node = successor
-
-        for node_id in current_tracklet:
-            node_to_tid[node_id] = track_id
-
-        track_id += 1
-
-    track_graph = {
-        node_to_tid[node_id]: [node_to_tid[node_id_] for node_id_ in parents]
-        for node_id, parents in parent_graph.items()
-    }
-
-    return node_to_tid, track_graph

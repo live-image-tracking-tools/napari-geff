@@ -1,5 +1,6 @@
 import typing
-from typing import Union
+from collections import defaultdict
+from typing import Any, Union
 
 if typing.TYPE_CHECKING:
     import networkx as nx
@@ -52,8 +53,8 @@ def diff_nx_graphs(
             val1, val2 = attrs1.get(key), attrs2.get(key)
 
             # Check for difference in value, and optionally type
-            type_mismatch = check_types and type(val1) != type(val2)
-            if val1 != val2 or type_mismatch:
+            type_mismatch = check_types and type(val1) is not type(val2)
+            if val1 is not val2 or type_mismatch:
                 type1_str = type(val1).__name__ if key in attrs1 else "N/A"
                 type2_str = type(val2).__name__ if key in attrs2 else "N/A"
                 v1_rep = val1 if key in attrs1 else "<missing>"
@@ -82,9 +83,10 @@ def diff_nx_graphs(
                 u, v = v, u
             return (u, v, *key)
 
-        map1, map2 = {canonical_edge(e): e for e in edges1}, {
-            canonical_edge(e): e for e in edges2
-        }
+        map1, map2 = (
+            {canonical_edge(e): e for e in edges1},
+            {canonical_edge(e): e for e in edges2},
+        )
         canon_edges1, canon_edges2 = set(map1.keys()), set(map2.keys())
     else:
         map1, map2 = {e: e for e in edges1}, {e: e for e in edges2}
@@ -114,7 +116,7 @@ def diff_nx_graphs(
             val1, val2 = attrs1.get(key), attrs2.get(key)
 
             # Check for difference in value, and optionally type
-            type_mismatch = check_types and type(val1) != type(val2)
+            type_mismatch = check_types and type(val1) is not type(val2)
             if val1 != val2 or type_mismatch:
                 type1_str = type(val1).__name__ if key in attrs1 else "N/A"
                 type2_str = type(val2).__name__ if key in attrs2 else "N/A"
@@ -130,3 +132,71 @@ def diff_nx_graphs(
                     )
                 )
     return diffs
+
+
+def get_tracklets_nx(
+    graph: nx.DiGraph,
+) -> tuple[dict[Any, int], dict[int, list[int]]]:
+    """Extract tracklet IDs and parent-child connections from a directed graph.
+
+    A tracklet consists of a sequence of nodes in the graph connected by edges
+    where the incoming and outgoing degree of each node on the path is at most 1.
+
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        networkx graph of full tracking data
+
+    Returns
+    -------
+    Tuple[Dict[Any, int], Dict[int, List[int]]]
+        A tuple containing:
+        - A dictionary mapping node IDs to tracklet IDs.
+        - A dictionary mapping each node ID to a list of its parent tracklet IDs.
+    """
+    track_id = 1
+    visited_nodes = set()
+    node_to_tid = {}
+    parent_graph = defaultdict(list)
+
+    for node in graph.nodes():
+        if node in visited_nodes:
+            continue
+
+        start_node = node
+        while graph.in_degree(start_node) == 1:
+            predecessor = list(graph.predecessors(start_node))[0]
+            if predecessor in visited_nodes:
+                break
+            start_node = predecessor
+
+        current_tracklet = []
+        temp_node = start_node
+        while True:
+            current_tracklet.append(temp_node)
+            visited_nodes.add(temp_node)
+
+            if graph.out_degree(temp_node) != 1:
+                for child in graph.successors(temp_node):
+                    parent_graph[child].append(temp_node)
+                break
+
+            successor = list(graph.successors(temp_node))[0]
+
+            if graph.in_degree(successor) != 1:
+                parent_graph[successor].append(temp_node)
+                break
+
+            temp_node = successor
+
+        for node_id in current_tracklet:
+            node_to_tid[node_id] = track_id
+
+        track_id += 1
+
+    track_graph = {
+        node_to_tid[node_id]: [node_to_tid[node_id_] for node_id_ in parents]
+        for node_id, parents in parent_graph.items()
+    }
+
+    return node_to_tid, track_graph
