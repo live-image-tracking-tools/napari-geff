@@ -172,6 +172,8 @@ def reader_function(
             "tracks",
         )
     ]
+    sort_order = ["image", "labels", "tracks"]
+    layers = sorted(layers, key=lambda x: sort_order.index(x[2]))
 
     return layers
 
