@@ -1,0 +1,36 @@
+{
+    "geff": {
+        "axes": [
+            {
+                "max": 531.0,
+                "min": 0.0,
+                "name": "t",
+                "type": "time",
+                "unit": null
+            },
+            {
+                "max": 4398.1,
+                "min": 1523.368197,
+                "name": "z",
+                "type": "space",
+                "unit": null
+            },
+            {
+                "max": 1877.7,
+                "min": 81.667,
+                "name": "y",
+                "type": "space",
+                "unit": null
+            },
+            {
+                "max": 2152.3,
+                "min": 764.42,
+                "name": "x",
+                "type": "space",
+                "unit": null
+            }
+        ],
+        "directed": true,
+        "geff_version": "0.2.2.dev20+g611e7a2.d20250719"
+    }
+}

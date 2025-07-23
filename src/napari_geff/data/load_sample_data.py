@@ -12,3 +12,11 @@ def load_sample_data():
     path = str(path)
     layers = reader_function(path)
     return layers
+
+
+def load_sample_data_3d():
+    script_path = Path(__file__).resolve()
+    path = script_path.parent.parent.parent / "examples/graph_3d.zarr/tracks"
+    path = str(path)
+    layers = reader_function(path)
+    return layers

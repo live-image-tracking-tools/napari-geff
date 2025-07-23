@@ -15,6 +15,9 @@ contributions:
     - id: napari-geff.sample_data
       title: Load sample data
       python_name: napari_geff.data.load_sample_data:load_sample_data
+    - id: napari-geff.sample_data_3d
+      title: Load 3D sample data
+      python_name: napari_geff.data.load_sample_data:load_sample_data_3d
   readers:
     - command: napari-geff.get_reader
       accepts_directories: true
@@ -25,5 +28,8 @@ contributions:
       filename_extensions: []
   sample_data:
     - key: napari-geff.sample_data
-      display_name: Sample tracks data
+      display_name: Sample tracks data, w masks and images
       command: napari-geff.sample_data
+    - key: napari-geff.sample_data_3d
+      display_name: Sample tracks data, 3D
+      command: napari-geff.sample_data_3d
