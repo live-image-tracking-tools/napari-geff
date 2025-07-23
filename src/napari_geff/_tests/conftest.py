@@ -7,6 +7,7 @@ import networkx as nx
 import numpy as np
 import pytest
 from numpy.typing import NDArray
+from typing_extensions import NotRequired
 
 DTypeStr = Literal[
     "double",
@@ -22,6 +23,12 @@ DTypeStr = Literal[
 Axes = Literal["t", "z", "y", "x"]
 
 
+class DesignHints(TypedDict):
+    display_vertical: NotRequired[str]
+    display_horizontal: NotRequired[str]
+    display_depth: NotRequired[str]
+
+
 class GraphAttrs(TypedDict):
     nodes: NDArray[Any]
     edges: NDArray[Any]
@@ -35,6 +42,7 @@ class GraphAttrs(TypedDict):
     axis_names: tuple[Axes, ...]
     axis_units: tuple[str, ...]
     axis_types: tuple[str, ...]  # Added for type declaration
+    design_hints: NotRequired[DesignHints]
 
 
 class ExampleNodeProps(TypedDict):
@@ -54,7 +62,7 @@ def create_dummy_graph_props(
 ) -> GraphAttrs:
     """Creates a dictionary of graph properties for testing."""
     axis_names: tuple[Axes, ...] = ("t", "z", "y", "x")
-    axis_units = ("s", "nm", "nm", "nm")
+    axis_units = ("second", "nanometer", "nanometer", "nanometer")
     axis_types = ("time", "space", "space", "space")  # Added axis types
 
     nodes = np.array([10, 2, 127, 4, 5], dtype=node_dtype)
@@ -81,7 +89,7 @@ def create_dummy_graph_props(
         "directed": directed,
         "axis_names": axis_names,
         "axis_units": axis_units,
-        "axis_types": axis_types,  # Added to returned dict
+        "axis_types": axis_types,  # Added to returned dict,
     }
 
 

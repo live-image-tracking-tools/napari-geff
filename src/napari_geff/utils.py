@@ -52,7 +52,7 @@ def diff_nx_graphs(
             val1, val2 = attrs1.get(key), attrs2.get(key)
 
             # Check for difference in value, and optionally type
-            type_mismatch = check_types and type(val1) != type(val2)
+            type_mismatch = check_types and type(val1) is not type(val2)
             if val1 != val2 or type_mismatch:
                 type1_str = type(val1).__name__ if key in attrs1 else "N/A"
                 type2_str = type(val2).__name__ if key in attrs2 else "N/A"
@@ -114,7 +114,7 @@ def diff_nx_graphs(
             val1, val2 = attrs1.get(key), attrs2.get(key)
 
             # Check for difference in value, and optionally type
-            type_mismatch = check_types and type(val1) != type(val2)
+            type_mismatch = check_types and type(val1) is not type(val2)
             if val1 != val2 or type_mismatch:
                 type1_str = type(val1).__name__ if key in attrs1 else "N/A"
                 type2_str = type(val2).__name__ if key in attrs2 else "N/A"
