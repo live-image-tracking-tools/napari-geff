@@ -37,6 +37,31 @@ If napari is not already installed, you can install `napari-geff` with napari an
 pip install "napari-geff[all]"
 ```
 
+## Usage
+
+`napari-geff` supports loading [GEFF](https://live-image-tracking-tools.github.io/geff/latest/) files into
+`napari` as `Tracks` layers, and saving them back out to GEFF format.
+
+To use `napari-geff` after installation, simply drag a GEFF file into the viewer and select `GEFF IO` from the
+plugin selection dialog, if required. The file will be loaded as a `Tracks` layer.
+
+Any node properties defined on your graph will be stored as features on your tracks layer. Edge properties
+will be available under `layer.metadata['edge_properties']` as a dictionary, but cannot currently be displayed
+or used for visualization in `napari`.
+
+If your file contains `image` or `labels` related objects as per the GEFF
+[spec](https://live-image-tracking-tools.github.io/geff/v0.4.0/specification/#geff_related_objects),
+these will also be loaded alongside your `Tracks` layer.
+
+If you wish to open your geff file into layers **programmatically**, you can do so using the `viewer.open` method:
+
+```python
+import napari
+path = 'path/to/top_level_zarr.zarr/my-geff-group/
+
+viewer = napari.Viewer()
+layers = viewer.open(path, plugin='napari-geff')
+```
 
 
 ## Contributing
