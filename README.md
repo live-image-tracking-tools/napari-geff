@@ -39,7 +39,7 @@ pip install "napari-geff[all]"
 
 ## Usage
 
-`napari-geff` supports loading [GEFF](https://live-image-tracking-tools.github.io/geff/latest/) files into
+`napari-geff` supports loading directed graphs stored as [GEFF](https://live-image-tracking-tools.github.io/geff/latest/) files into
 `napari` as `Tracks` layers, and saving them back out to GEFF format.
 
 To use `napari-geff` after installation, simply drag a GEFF file into the viewer and select `GEFF IO` from the
