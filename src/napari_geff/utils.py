@@ -1,9 +1,7 @@
-import typing
 from collections import defaultdict
 from typing import Any, Union
 
-if typing.TYPE_CHECKING:
-    import networkx as nx
+import networkx as nx
 
 
 def diff_nx_graphs(
