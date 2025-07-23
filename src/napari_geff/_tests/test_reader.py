@@ -1,10 +1,16 @@
 import json
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 import zarr
+from geff.metadata_schema import Axis, DisplayHint
 
-from napari_geff._reader import get_geff_reader, reader_function
+from napari_geff._reader import (
+    get_display_axes,
+    get_geff_reader,
+    reader_function,
+)
 
 
 def test_reader_invalid_file(tmp_path):
@@ -140,3 +146,70 @@ def test_reader_loads_attrs(path_w_expected_graph_props):
     edge_meta = layer_tuples[0][1]["metadata"]["edge_properties"]
     assert all((True for _, item in edge_meta.items() if "score" in item))
     assert all((True for _, item in edge_meta.items() if "color" in item))
+
+
+def test_get_display_axes():
+    """Test that the display axes are correctly set"""
+
+    # no display hints provided
+    props = {}
+    props["axes"] = [
+        Axis(type="time", name="t"),
+        Axis(type="space", name="z"),
+        Axis(type="space", name="y"),
+        Axis(type="space", name="x"),
+    ]
+    props["display_hints"] = None
+    props_dot = SimpleNamespace(**props)
+    display_axes, time_axis = get_display_axes(props_dot)
+    assert display_axes == ["t", "z", "y", "x"]
+    assert time_axis == "t"
+
+    # no display hints and more than 4 spatiotemporal axes
+    # innermost spatial axes returned, but time is always included
+    props["axes"] = [
+        Axis(type="time", name="t"),
+        Axis(type="space", name="z"),
+        Axis(type="space", name="c"),
+        Axis(type="space", name="y"),
+        Axis(type="space", name="x"),
+    ]
+    props_dot = SimpleNamespace(**props)
+    display_axes, time_axis = get_display_axes(props_dot)
+    assert display_axes == ["t", "c", "y", "x"]
+    assert time_axis == "t"
+
+    # no display hints, more than 4 spatial axes, no time
+    props["axes"] = [
+        Axis(type="space", name="other"),
+        Axis(type="space", name="z"),
+        Axis(type="space", name="c"),
+        Axis(type="space", name="y"),
+        Axis(type="space", name="x"),
+    ]
+    props_dot = SimpleNamespace(**props)
+    display_axes, time_axis = get_display_axes(props_dot)
+    assert display_axes == ["z", "c", "y", "x"]
+    assert time_axis is None
+
+    # full display hints, order is respected
+    props["display_hints"] = DisplayHint(
+        display_vertical="z", display_horizontal="y", display_depth="x"
+    )
+    props["axes"] = [
+        Axis(type="time", name="t"),
+        Axis(type="space", name="z"),
+        Axis(type="space", name="y"),
+        Axis(type="space", name="x"),
+    ]
+    props_dot = SimpleNamespace(**props)
+    display_axes, time_axis = get_display_axes(props_dot)
+    assert display_axes == ["t", "x", "z", "y"]
+
+    # fewer display hints than space axes, order is respected
+    props["display_hints"] = DisplayHint(
+        display_vertical="z", display_horizontal="y"
+    )
+    props_dot = SimpleNamespace(**props)
+    display_axes, time_axis = get_display_axes(props_dot)
+    assert display_axes == ["t", "x", "z", "y"]
