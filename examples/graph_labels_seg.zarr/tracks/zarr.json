@@ -1,0 +1,45 @@
+{
+  "attributes": {
+    "geff": {
+      "geff_version": "0.3.0",
+      "directed": true,
+      "axes": [
+        {
+          "name": "y",
+          "type": "space",
+          "unit": null,
+          "min": 6.381818181818182,
+          "max": 185.05172413793105
+        },
+        {
+          "name": "x",
+          "type": "space",
+          "unit": null,
+          "min": 3.3793103448275863,
+          "max": 229.0625
+        },
+        {
+          "name": "frame",
+          "type": "time",
+          "unit": null,
+          "min": 0.0,
+          "max": 9.0
+        }
+      ],
+      "related_objects": [
+        {
+          "type": "labels",
+          "path": "../labels/",
+          "label_prop": "seg_id"
+        },
+        {
+          "type": "image",
+          "path": "../image/"
+        }
+      ]
+    }
+  },
+  "zarr_format": 3,
+  "consolidated_metadata": null,
+  "node_type": "group"
+}

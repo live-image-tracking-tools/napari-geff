@@ -112,7 +112,6 @@ def path_w_expected_graph_props(
         edge_prop_dtypes: ExampleEdgeProps,
         directed: bool,
     ) -> tuple[Path, GraphAttrs]:
-
         graph_props = create_dummy_graph_props(
             node_dtype=node_dtype,
             node_prop_dtypes=node_prop_dtypes,

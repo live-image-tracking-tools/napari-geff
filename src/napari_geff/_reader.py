@@ -8,18 +8,20 @@ The original networkx graph read by `geff.read_nx` is stored in the metadata
 attribute on the layer.
 """
 
-from collections import defaultdict
+import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Union
 
 import geff
-import networkx as nx
 import numpy as np
 import pandas as pd
 import pydantic
 import zarr
 from geff import GeffMetadata
 from geff.utils import validate
+
+from napari_geff.utils import get_display_axes, get_tracklets_nx
 
 
 def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
@@ -94,7 +96,40 @@ def reader_function(
     path = paths[0]
 
     nx_graph, geff_metadata = geff.read_nx(path, validate=False)
-    node_to_tid, track_graph = get_tracklets(nx_graph)
+
+    layers = []
+    if hasattr(geff_metadata, "related_objects"):
+        related_objects = geff_metadata.related_objects
+        if related_objects:
+            for related_object in related_objects:
+                if related_object.type == "labels":
+                    labels_path = Path(path) / related_object.path
+                    labels_path = os.path.expanduser(labels_path)
+                    labels = zarr.open(labels_path, mode="r")
+                    layers.append(
+                        (
+                            labels,
+                            {
+                                "name": "Labels",
+                            },
+                            "labels",
+                        )
+                    )
+                if related_object.type == "image":
+                    image_path = Path(path) / related_object.path
+                    image_path = os.path.expanduser(image_path)
+                    image = zarr.open(image_path, mode="r")
+                    layers.append(
+                        (
+                            image,
+                            {
+                                "name": "Image",
+                            },
+                            "image",
+                        )
+                    )
+
+    node_to_tid, track_graph = get_tracklets_nx(nx_graph)
 
     node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
     node_data_df.rename(columns={0: "node_id"}, inplace=True)
@@ -149,7 +184,7 @@ def reader_function(
         else:
             pass
 
-    return [
+    layers += [
         (
             tracks_napari,
             {
@@ -159,135 +194,9 @@ def reader_function(
                 "features": node_data_df,
             },
             "tracks",
-        ),
-    ]
-
-
-def get_tracklets(
-    graph: nx.DiGraph,
-) -> tuple[dict[Any, int], dict[int, list[int]]]:
-    """Extract tracklet IDs and parent-child connections from a directed graph.
-
-    A tracklet consists of a sequence of nodes in the graph connected by edges
-    where the incoming and outgoing degree of each node on the path is at most 1.
-
-    Parameters
-    ----------
-    graph : nx.DiGraph
-        networkx graph of full tracking data
-
-    Returns
-    -------
-    Tuple[Dict[Any, int], Dict[int, List[int]]]
-        A tuple containing:
-        - A dictionary mapping node IDs to tracklet IDs.
-        - A dictionary mapping each node ID to a list of its parent tracklet IDs.
-    """
-    track_id = 1
-    visited_nodes = set()
-    node_to_tid = {}
-    parent_graph = defaultdict(list)
-
-    for node in graph.nodes():
-        if node in visited_nodes:
-            continue
-
-        start_node = node
-        while graph.in_degree(start_node) == 1:
-            predecessor = list(graph.predecessors(start_node))[0]
-            if predecessor in visited_nodes:
-                break
-            start_node = predecessor
-
-        current_tracklet = []
-        temp_node = start_node
-        while True:
-            current_tracklet.append(temp_node)
-            visited_nodes.add(temp_node)
-
-            if graph.out_degree(temp_node) != 1:
-
-                for child in graph.successors(temp_node):
-                    parent_graph[child].append(temp_node)
-                break
-
-            successor = list(graph.successors(temp_node))[0]
-
-            if graph.in_degree(successor) != 1:
-                parent_graph[successor].append(temp_node)
-                break
-
-            temp_node = successor
-
-        for node_id in current_tracklet:
-            node_to_tid[node_id] = track_id
-
-        track_id += 1
-
-    track_graph = {
-        node_to_tid[node_id]: [node_to_tid[node_id_] for node_id_ in parents]
-        for node_id, parents in parent_graph.items()
-    }
-
-    return node_to_tid, track_graph
-
-
-def get_display_axes(
-    geff_metadata: GeffMetadata,
-) -> tuple[list[str], str | None]:
-    """Get display axes from geff metadata.
-
-    Inspects geff_metadata.axes and geff_metadata.display_hints
-    to determine the display axes in the order of time, depth, vertical,
-    horizontal. At most 4 spatiotemporal axes are returned, even if
-    more are present, as napari tracks layer only supports 4 axes on
-    top of track ID.
-
-    Parameters
-    ----------
-    geff_metadata : GeffMetadata
-        Metadata object containing axis information.
-
-    Returns
-    -------
-    list[str]
-        List of display axes names in the order of time, depth, vertical, horizontal.
-    """
-    axes = geff_metadata.axes
-    time_axis_name = None
-    spatial_axes_names = []
-    for axis in axes:
-        if axis.type == "time":
-            time_axis_name = axis.name
-        elif axis.type == "space":
-            spatial_axes_names.append(axis.name)
-
-    # if display hints are provided, we make sure our spatial axis names
-    # are ordered accordingly
-    display_axis_dict = {}
-    if geff_metadata.display_hints:
-        display_hints = geff_metadata.display_hints
-        if display_hints.display_depth:
-            display_axis_dict["depth"] = display_hints.display_depth
-        if display_hints.display_vertical:
-            display_axis_dict["vertical"] = display_hints.display_vertical
-        if display_hints.display_horizontal:
-            display_axis_dict["horizontal"] = display_hints.display_horizontal
-    display_axes = []
-    for axis_type in ["depth", "vertical", "horizontal"]:
-        if axis_type in display_axis_dict:
-            display_axes.append(display_axis_dict[axis_type])
-            spatial_axes_names.remove(display_axis_dict[axis_type])
-    display_axes = spatial_axes_names + display_axes
-    # we always take the time axis if we have it
-    if time_axis_name:
-        display_axes.insert(0, time_axis_name)
-    if len(display_axes) > 4:
-        # if there are more than 4 axes, we only take the innermost spatial axes
-        # but we always include the time axis
-        display_axes = (
-            display_axes[-4:]
-            if not time_axis_name
-            else [display_axes[0]] + display_axes[-3:]
         )
-    return display_axes, time_axis_name
+    ]
+    sort_order = ["image", "labels", "tracks"]
+    layers = sorted(layers, key=lambda x: sort_order.index(x[2]))
+
+    return layers
