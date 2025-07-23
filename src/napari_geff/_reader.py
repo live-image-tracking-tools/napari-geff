@@ -21,7 +21,7 @@ import zarr
 from geff import GeffMetadata
 from geff.utils import validate
 
-from napari_geff.utils import get_tracklets_nx
+from napari_geff.utils import get_display_axes, get_tracklets_nx
 
 
 def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
@@ -200,64 +200,3 @@ def reader_function(
     layers = sorted(layers, key=lambda x: sort_order.index(x[2]))
 
     return layers
-
-
-def get_display_axes(
-    geff_metadata: GeffMetadata,
-) -> tuple[list[str], str | None]:
-    """Get display axes from geff metadata.
-
-    Inspects geff_metadata.axes and geff_metadata.display_hints
-    to determine the display axes in the order of time, depth, vertical,
-    horizontal. At most 4 spatiotemporal axes are returned, even if
-    more are present, as napari tracks layer only supports 4 axes on
-    top of track ID.
-
-    Parameters
-    ----------
-    geff_metadata : GeffMetadata
-        Metadata object containing axis information.
-
-    Returns
-    -------
-    list[str]
-        List of display axes names in the order of time, depth, vertical, horizontal.
-    """
-    axes = geff_metadata.axes
-    time_axis_name = None
-    spatial_axes_names = []
-    for axis in axes:
-        if axis.type == "time":
-            time_axis_name = axis.name
-        elif axis.type == "space":
-            spatial_axes_names.append(axis.name)
-
-    # if display hints are provided, we make sure our spatial axis names
-    # are ordered accordingly
-    display_axis_dict = {}
-    if geff_metadata.display_hints:
-        display_hints = geff_metadata.display_hints
-        if display_hints.display_depth:
-            display_axis_dict["depth"] = display_hints.display_depth
-        if display_hints.display_vertical:
-            display_axis_dict["vertical"] = display_hints.display_vertical
-        if display_hints.display_horizontal:
-            display_axis_dict["horizontal"] = display_hints.display_horizontal
-    display_axes = []
-    for axis_type in ["depth", "vertical", "horizontal"]:
-        if axis_type in display_axis_dict:
-            display_axes.append(display_axis_dict[axis_type])
-            spatial_axes_names.remove(display_axis_dict[axis_type])
-    display_axes = spatial_axes_names + display_axes
-    # we always take the time axis if we have it
-    if time_axis_name:
-        display_axes.insert(0, time_axis_name)
-    if len(display_axes) > 4:
-        # if there are more than 4 axes, we only take the innermost spatial axes
-        # but we always include the time axis
-        display_axes = (
-            display_axes[-4:]
-            if not time_axis_name
-            else [display_axes[0]] + display_axes[-3:]
-        )
-    return display_axes, time_axis_name
