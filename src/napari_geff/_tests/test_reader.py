@@ -148,9 +148,8 @@ def test_reader_loads_attrs(path_w_expected_graph_props):
     assert all((True for _, item in edge_meta.items() if "color" in item))
 
 
-def test_get_display_axes():
-    """Test that the display axes are correctly set"""
-
+def test_display_axes_no_hints_all_provided():
+    """Test that the display axes are correct when no display hints are provided."""
     # no display hints provided
     props = {}
     props["axes"] = [
@@ -165,6 +164,10 @@ def test_get_display_axes():
     assert display_axes == ["t", "z", "y", "x"]
     assert time_axis == "t"
 
+
+def test_display_axes_no_hints_additional_spatial_axes_respects_time():
+    """Test that display axes are correct with no display hints, time available, and additional spatial axes."""
+    props = {}
     # no display hints and more than 4 spatiotemporal axes
     # innermost spatial axes returned, but time is always included
     props["axes"] = [
@@ -174,12 +177,16 @@ def test_get_display_axes():
         Axis(type="space", name="y"),
         Axis(type="space", name="x"),
     ]
+    props["display_hints"] = None
     props_dot = SimpleNamespace(**props)
     display_axes, time_axis = get_display_axes(props_dot)
     assert display_axes == ["t", "c", "y", "x"]
     assert time_axis == "t"
 
-    # no display hints, more than 4 spatial axes, no time
+
+def test_display_axes_no_hints_no_time():
+    """Test that display axes are correct with no display hints and no time axis."""
+    props = {}
     props["axes"] = [
         Axis(type="space", name="other"),
         Axis(type="space", name="z"),
@@ -187,12 +194,16 @@ def test_get_display_axes():
         Axis(type="space", name="y"),
         Axis(type="space", name="x"),
     ]
+    props["display_hints"] = None
     props_dot = SimpleNamespace(**props)
     display_axes, time_axis = get_display_axes(props_dot)
     assert display_axes == ["z", "c", "y", "x"]
     assert time_axis is None
 
-    # full display hints, order is respected
+
+def test_display_axes_full_hints():
+    """Test that display axes are correctly ordered with full display hints provided."""
+    props = {}
     props["display_hints"] = DisplayHint(
         display_vertical="z", display_horizontal="y", display_depth="x"
     )
@@ -206,10 +217,20 @@ def test_get_display_axes():
     display_axes, time_axis = get_display_axes(props_dot)
     assert display_axes == ["t", "x", "z", "y"]
 
-    # fewer display hints than space axes, order is respected
+
+def test_display_axes_partial_hints():
+    """Test that display axes are correctly ordered with partial display hints provided."""
+    # fewer display hints than space axes, given axis order is respected
+    props = {}
     props["display_hints"] = DisplayHint(
         display_vertical="z", display_horizontal="y"
     )
+    props["axes"] = [
+        Axis(type="time", name="t"),
+        Axis(type="space", name="z"),
+        Axis(type="space", name="y"),
+        Axis(type="space", name="x"),
+    ]
     props_dot = SimpleNamespace(**props)
     display_axes, time_axis = get_display_axes(props_dot)
     assert display_axes == ["t", "x", "z", "y"]
