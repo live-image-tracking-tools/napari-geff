@@ -45,6 +45,9 @@ def write_tracks(path: str, data: Any, meta: dict) -> list[str]:
             columns=["napari_track_id"] + axis_names,
             # napari assumes the first two cols are tid and t
         )
+
+        tracks_layer_df = pd.concat([tracks_layer_df, features], axis=1)
+
         # Since no metadata, use index as node id. TODO maybe allow user to specify a node id in features or metadata
         tracks_layer_df["node_id"] = tracks_layer_df.index
 
