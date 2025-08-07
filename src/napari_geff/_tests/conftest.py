@@ -90,6 +90,7 @@ def create_dummy_graph_props(
         "axis_names": axis_names,
         "axis_units": axis_units,
         "axis_types": axis_types,  # Added to returned dict,
+        "affine": np.eye(5),  # t, z, y, x + 1 (homogeneous coordinate)
     }
 
 

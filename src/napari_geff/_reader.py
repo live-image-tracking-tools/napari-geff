@@ -184,6 +184,10 @@ def reader_function(
         else:
             pass
 
+    affine = geff_metadata.affine
+    if affine is not None:
+        affine = np.asarray(affine.matrix)
+
     layers += [
         (
             tracks_napari,
@@ -192,6 +196,7 @@ def reader_function(
                 "name": "Tracks",
                 "metadata": metadata,
                 "features": node_data_df,
+                "affine": affine,
             },
             "tracks",
         )
