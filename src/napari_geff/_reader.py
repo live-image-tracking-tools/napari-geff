@@ -8,6 +8,7 @@ The original networkx graph read by `geff.read_nx` is stored in the metadata
 attribute on the layer.
 """
 
+import contextlib
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -177,12 +178,10 @@ def reader_function(
     }
     for prop in zarrgeff["nodes"]["props"]:
         dtype = zarrgeff["nodes"]["props"][prop]["values"].dtype
-        if dtype in np_to_pd_dtype:
+        with contextlib.suppress(ValueError, TypeError):
             node_data_df[prop] = node_data_df[prop].astype(
                 np_to_pd_dtype[dtype]
             )
-        else:
-            pass
 
     affine = geff_metadata.affine
     if affine is not None:
