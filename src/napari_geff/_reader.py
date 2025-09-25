@@ -18,7 +18,6 @@ import pandas as pd
 import pydantic
 import zarr
 from geff import GeffMetadata
-from geff.utils import validate
 
 
 def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
@@ -46,8 +45,8 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
         path = path[0]
 
     try:
-        validate(path)
-    except (AssertionError, pydantic.ValidationError):
+        geff.validate_structure(path)
+    except (AssertionError, pydantic.ValidationError, FileNotFoundError):
         return None
 
     graph = zarr.open(path, mode="r")
@@ -70,7 +69,7 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
 
 
 def reader_function(
-    path: Union[str, list[str]]
+    path: Union[str, list[str]],
 ) -> list[tuple[pd.DataFrame, dict[str, Any], str]]:
     """Read geff file at path and return `Tracks` layer data tuple.
 
@@ -92,7 +91,7 @@ def reader_function(
 
     path = paths[0]
 
-    nx_graph, geff_metadata = geff.read_nx(path, validate=False)
+    nx_graph, geff_metadata = geff.read(path)
     node_to_tid, track_graph = get_tracklets(nx_graph)
 
     node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
@@ -192,7 +191,6 @@ def get_tracklets(
             visited_nodes.add(temp_node)
 
             if graph.out_degree(temp_node) != 1:
-
                 for child in graph.successors(temp_node):
                     parent_graph[child].append(temp_node)
                 break

@@ -32,7 +32,7 @@ dependencies = [
     "magicgui",
     "qtpy",
     "scikit-image",
-    "geff@git+https://github.com/live-image-tracking-tools/geff",
+    "geff>=1",
     "pandas",
 ]
 

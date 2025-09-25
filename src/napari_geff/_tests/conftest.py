@@ -104,7 +104,6 @@ def path_w_expected_graph_props(
         edge_prop_dtypes: ExampleEdgeProps,
         directed: bool,
     ) -> tuple[Path, GraphAttrs]:
-
         graph_props = create_dummy_graph_props(
             node_dtype=node_dtype,
             node_prop_dtypes=node_prop_dtypes,
@@ -137,8 +136,7 @@ def path_w_expected_graph_props(
 
         path = tmp_path / "rw_consistency.zarr/graph"
 
-        # Write graph to disk using the updated geff.write_nx signature
-        geff.write_nx(
+        geff.write(
             graph,
             path,
             axis_names=list(graph_props["axis_names"]),
