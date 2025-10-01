@@ -32,7 +32,7 @@ dependencies = [
     "magicgui",
     "qtpy",
     "scikit-image",
-    "geff>=1",
+    "geff>=1.1.1",
     "pandas",
 ]
 

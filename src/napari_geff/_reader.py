@@ -102,6 +102,18 @@ def reader_function(
 
     nx_graph, geff_metadata = geff.read(path)
 
+    scale = [ax.scale for ax in geff_metadata.axes]
+    if not np.all([s is None for s in scale]):
+        scale = [1 if s is None else s for s in scale]
+    else:
+        scale = None
+
+    offset = [ax.offset for ax in geff_metadata.axes]
+    if not np.all([o is None for o in offset]):
+        offset = [0 if o is None else o for o in offset]
+    else:
+        offset = None
+
     layers = []
     if hasattr(geff_metadata, "related_objects"):
         related_objects = geff_metadata.related_objects
@@ -116,6 +128,8 @@ def reader_function(
                             labels,
                             {
                                 "name": "Labels",
+                                "scale": scale,
+                                "offset": offset,
                             },
                             "labels",
                         )
@@ -129,6 +143,8 @@ def reader_function(
                             image,
                             {
                                 "name": "Image",
+                                "scale": scale,
+                                "offset": offset,
                             },
                             "image",
                         )
@@ -187,12 +203,6 @@ def reader_function(
                 np_to_pd_dtype[dtype]
             )
 
-    scale = [ax.scale for ax in geff_metadata.axes]
-    if not np.all([s is None for s in scale]):
-        scale = [1 if s is None else s for s in scale]
-    else:
-        scale = None
-
     layers += [
         (
             tracks_napari,
@@ -202,6 +212,7 @@ def reader_function(
                 "metadata": metadata,
                 "features": node_data_df,
                 "scale": scale,
+                "offset": offset,
             },
             "tracks",
         )
