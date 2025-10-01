@@ -42,6 +42,8 @@ class GraphAttrs(TypedDict):
     axis_names: tuple[Axes, ...]
     axis_units: tuple[str, ...]
     axis_types: tuple[str, ...]  # Added for type declaration
+    axis_scales: tuple[float | None, ...]
+    axis_offset: tuple[float | None, ...]
     design_hints: NotRequired[DesignHints]
 
 
@@ -64,6 +66,8 @@ def create_dummy_graph_props(
     axis_names: tuple[Axes, ...] = ("t", "z", "y", "x")
     axis_units = ("second", "nanometer", "nanometer", "nanometer")
     axis_types = ("time", "space", "space", "space")  # Added axis types
+    axis_scales = (None, 0.5, 2.0, 1.0)
+    axis_offset = (None, 0.0, 1.0, 3.0)
 
     nodes = np.array([10, 2, 127, 4, 5], dtype=node_dtype)
     t = np.array([0.1, 0.2, 0.3, 0.4, 0.5], dtype=node_prop_dtypes["position"])
@@ -90,7 +94,8 @@ def create_dummy_graph_props(
         "axis_names": axis_names,
         "axis_units": axis_units,
         "axis_types": axis_types,  # Added to returned dict,
-        "affine": np.eye(5),  # t, z, y, x + 1 (homogeneous coordinate)
+        "axis_scales": axis_scales,
+        "axis_offset": axis_offset,
     }
 
 
@@ -145,15 +150,14 @@ def path_w_expected_graph_props(
 
         path = tmp_path / "rw_consistency.zarr/graph"
 
-        # Write graph to disk using the updated geff.write_nx signature
-        geff.write_nx(
+        geff.write(
             graph,
             path,
             axis_names=list(graph_props["axis_names"]),
             axis_units=list(graph_props["axis_units"]),
-            axis_types=list(
-                graph_props["axis_types"]
-            ),  # Pass the axis types here
+            axis_types=list(graph_props["axis_types"]),
+            axis_scales=list(graph_props["axis_scales"]),
+            axis_offset=list(graph_props["axis_offset"]),
         )
 
         return path, graph_props

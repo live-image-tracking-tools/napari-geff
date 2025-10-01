@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 import networkx as nx
 import pandas as pd
-from geff import write_nx
+from geff import write
 
 if TYPE_CHECKING:
     DataType = Union[Any, Sequence[Any]]
@@ -65,7 +65,7 @@ def write_tracks(path: str, data: Any, meta: dict) -> list[str]:
         axis_types=axis_types,
         edge_properties=layer_metadata.get("edge_properties", None),
     )
-    write_nx(
+    write(
         nx_graph,
         path,
         layer_metadata.get("geff_metadata", None),

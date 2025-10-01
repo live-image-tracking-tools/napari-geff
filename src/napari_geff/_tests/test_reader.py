@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 import zarr
-from geff.metadata_schema import Axis, DisplayHint
+from geff_spec import Axis, DisplayHint
 
 from napari_geff._reader import (
     get_display_axes,

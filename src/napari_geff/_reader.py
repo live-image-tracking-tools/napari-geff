@@ -4,7 +4,7 @@ This module provides a reader for geff zarr-backed files in napari.
 If the file is a valid geff file with either position OR axis_names attributes,
 the file will be read into a `Tracks` layer.
 
-The original networkx graph read by `geff.read_nx` is stored in the metadata
+The original networkx graph read by `geff.read` is stored in the metadata
 attribute on the layer.
 """
 
@@ -20,7 +20,6 @@ import pandas as pd
 import pydantic
 import zarr
 from geff import GeffMetadata
-from geff.utils import validate
 
 from napari_geff.utils import get_display_axes, get_tracklets_nx
 
@@ -50,8 +49,13 @@ def get_geff_reader(path: Union[str, list[str]]) -> Callable | None:
         path = path[0]
 
     try:
-        validate(path)
-    except (AssertionError, pydantic.ValidationError, ValueError):
+        geff.validate_structure(path)
+    except (
+        AssertionError,
+        pydantic.ValidationError,
+        ValueError,
+        FileNotFoundError,
+    ):
         return None
 
     graph = zarr.open(path, mode="r")
@@ -78,7 +82,7 @@ def reader_function(
 ) -> list[tuple[pd.DataFrame, dict[str, Any], str]]:
     """Read geff file at path and return `Tracks` layer data tuple.
 
-    The original networkx graph read by `geff.read_nx` is stored in the metadata
+    The original networkx graph read by `geff.read` is stored in the metadata
     attribute on the layer.
 
     Parameters
@@ -96,7 +100,19 @@ def reader_function(
 
     path = paths[0]
 
-    nx_graph, geff_metadata = geff.read_nx(path, validate=False)
+    nx_graph, geff_metadata = geff.read(path)
+
+    scale = [ax.scale for ax in geff_metadata.axes]
+    if not np.all([s is None for s in scale]):
+        scale = [1 if s is None else s for s in scale]
+    else:
+        scale = None
+
+    offset = [ax.offset for ax in geff_metadata.axes]
+    if not np.all([o is None for o in offset]):
+        offset = [0 if o is None else o for o in offset]
+    else:
+        offset = None
 
     layers = []
     if hasattr(geff_metadata, "related_objects"):
@@ -112,6 +128,8 @@ def reader_function(
                             labels,
                             {
                                 "name": "Labels",
+                                "scale": scale,
+                                "offset": offset,
                             },
                             "labels",
                         )
@@ -125,6 +143,8 @@ def reader_function(
                             image,
                             {
                                 "name": "Image",
+                                "scale": scale,
+                                "offset": offset,
                             },
                             "image",
                         )
@@ -183,10 +203,6 @@ def reader_function(
                 np_to_pd_dtype[dtype]
             )
 
-    affine = geff_metadata.affine
-    if affine is not None:
-        affine = np.asarray(affine.matrix)
-
     layers += [
         (
             tracks_napari,
@@ -195,7 +211,8 @@ def reader_function(
                 "name": "Tracks",
                 "metadata": metadata,
                 "features": node_data_df,
-                "affine": affine,
+                "scale": scale,
+                "offset": offset,
             },
             "tracks",
         )
