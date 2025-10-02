@@ -1,6 +1,7 @@
 import json
 from types import SimpleNamespace
 
+import napari
 import numpy as np
 import pandas as pd
 import zarr
@@ -117,7 +118,7 @@ def test_reader_geff_no_space_axes(tmp_path, path_w_expected_graph_props):
 
 
 def test_reader_loads_layer(path_w_expected_graph_props):
-    """Test the reader returns a tracks layer"""
+    """Test the reader returns a tracks layer that is readable by the napari Viewer."""
     written_path, props = path_w_expected_graph_props(
         np.uint16,
         {"position": "double"},
@@ -126,11 +127,14 @@ def test_reader_loads_layer(path_w_expected_graph_props):
     )
     layer_tuples = reader_function(str(written_path))
     assert len(layer_tuples) == 1
-    layer_tuple = layer_tuples[0]
-    assert len(layer_tuple) == 3
-    assert isinstance(layer_tuple[0], pd.DataFrame)
-    assert isinstance(layer_tuple[1], dict)
-    assert layer_tuple[2] == "tracks"
+    data, metadata, layer_type = layer_tuples[0]
+    assert isinstance(data, pd.DataFrame)
+    assert isinstance(metadata, dict)
+    assert layer_type == "tracks"
+
+    viewer = napari.Viewer()
+    viewer.add_tracks(data, **metadata)
+    viewer.close()
 
 
 # TODO: update once test fixture writes out some node properties
