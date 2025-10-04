@@ -129,7 +129,7 @@ def reader_function(
                             {
                                 "name": "Labels",
                                 "scale": scale,
-                                "offset": offset,
+                                "translate": offset,
                             },
                             "labels",
                         )
@@ -144,7 +144,7 @@ def reader_function(
                             {
                                 "name": "Image",
                                 "scale": scale,
-                                "offset": offset,
+                                "translate": offset,
                             },
                             "image",
                         )
@@ -212,7 +212,7 @@ def reader_function(
                 "metadata": metadata,
                 "features": node_data_df,
                 "scale": scale,
-                "offset": offset,
+                "translate": offset,
             },
             "tracks",
         )
