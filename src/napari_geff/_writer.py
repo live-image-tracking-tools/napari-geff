@@ -48,7 +48,7 @@ def _prepare_edge_attributes(
 
 
 def _ensure_numpy_bool_attributes(graph: nx.Graph) -> None:
-    """Get everthing into `numpy.bool_`"""
+    """Mutate the graph so any plain booleans become `numpy.bool_` for GEFF compatibility."""
     for _, data in graph.nodes(data=True):
         for key, value in list(data.items()):
             if isinstance(value, bool):
@@ -57,6 +57,24 @@ def _ensure_numpy_bool_attributes(graph: nx.Graph) -> None:
         for key, value in list(data.items()):
             if isinstance(value, bool):
                 data[key] = np.bool_(value)
+
+
+def _aligned_transform_values(
+    values: Sequence[Any] | None, axis_count: int
+) -> list[float | None] | None:
+    """Make transform vectors align with the geff axis list."""
+    if values is None:
+        return None
+
+    normalized = [_to_python_scalar(val) for val in values]
+
+    if len(normalized) == axis_count + 1:
+        # drop initial track-id scale/offset
+        normalized = normalized[1:]
+    elif len(normalized) > axis_count:
+        normalized = normalized[:axis_count]
+
+    return normalized
 
 
 def write_tracks(path: str, data: Any, meta: dict) -> list[str]:
@@ -96,6 +114,12 @@ def write_tracks(path: str, data: Any, meta: dict) -> list[str]:
         axis_types=axis_types,
     )
 
+    axis_count = len(axis_names)
+    layer_scale = meta.get("scale")
+    layer_translate = meta.get("translate")
+    axis_scales = _aligned_transform_values(layer_scale, axis_count)
+    axis_offset = _aligned_transform_values(layer_translate, axis_count)
+
     nx_graph = create_nx_graph(
         tracks_layer_data=tracks_layer_df,
         edges_df=edge_df,
@@ -105,12 +129,33 @@ def write_tracks(path: str, data: Any, meta: dict) -> list[str]:
         base_graph=layer_metadata.get("nx_graph"),
     )
     _ensure_numpy_bool_attributes(nx_graph)
+    geff_metadata = layer_metadata.get("geff_metadata")
+    if geff_metadata is not None:
+        if axis_scales is not None:
+            for axis, scale in zip(
+                geff_metadata.axes, axis_scales, strict=False
+            ):
+                axis.scale = scale
+        if axis_offset is not None:
+            for axis, offset in zip(
+                geff_metadata.axes, axis_offset, strict=False
+            ):
+                axis.offset = offset
+        layer_affine = meta.get("affine")
+        if layer_affine is not None:
+            geff_metadata.extra = geff_metadata.extra or {}
+            geff_metadata.extra["affine"] = [
+                [_to_python_scalar(value) for value in row]
+                for row in layer_affine
+            ]
     write(
         nx_graph,
         path,
-        layer_metadata.get("geff_metadata", None),
+        geff_metadata,
         axis_names=axis_names,
         axis_types=axis_types,
+        axis_scales=axis_scales,
+        axis_offset=axis_offset,
     )
 
     return [path]
