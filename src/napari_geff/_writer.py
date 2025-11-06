@@ -13,12 +13,50 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Union
 
 import networkx as nx
+import numpy as np
 import pandas as pd
 from geff import write
 
 if TYPE_CHECKING:
     DataType = Union[Any, Sequence[Any]]
     FullLayerData = tuple[DataType, dict, str]
+
+
+def _to_python_scalar(value: Any) -> Any:
+    """Convert numpy/pandas scalar types to Python scalars, normalizing booleans."""
+    if isinstance(value, np.bool_ | bool):
+        return np.bool_(bool(value))
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def _prepare_edge_attributes(
+    edge_props: dict[Any, dict[str, Any]],
+) -> dict[Any, dict[str, Any]]:
+    """Return edge attribute mapping with scalar values coerced via `_to_python_scalar`."""
+    prepared: dict[Any, dict[str, Any]] = {}
+    for edge, props in edge_props.items():
+        if isinstance(edge, tuple):
+            normalized_edge = tuple(_to_python_scalar(part) for part in edge)
+        else:
+            normalized_edge = edge
+        prepared[normalized_edge] = {
+            key: _to_python_scalar(val) for key, val in props.items()
+        }
+    return prepared
+
+
+def _ensure_numpy_bool_attributes(graph: nx.Graph) -> None:
+    """Get everthing into `numpy.bool_`"""
+    for _, data in graph.nodes(data=True):
+        for key, value in list(data.items()):
+            if isinstance(value, bool):
+                data[key] = np.bool_(value)
+    for _, _, data in graph.edges(data=True):
+        for key, value in list(data.items()):
+            if isinstance(value, bool):
+                data[key] = np.bool_(value)
 
 
 def write_tracks(path: str, data: Any, meta: dict) -> list[str]:
@@ -64,7 +102,9 @@ def write_tracks(path: str, data: Any, meta: dict) -> list[str]:
         axis_names=axis_names,
         axis_types=axis_types,
         edge_properties=layer_metadata.get("edge_properties", None),
+        base_graph=layer_metadata.get("nx_graph"),
     )
+    _ensure_numpy_bool_attributes(nx_graph)
     write(
         nx_graph,
         path,
@@ -134,30 +174,88 @@ def create_nx_graph(
     axis_names: list[str],
     axis_types: list[str],
     edge_properties: dict[str, Any] | None = None,
+    base_graph: nx.DiGraph | None = None,
 ) -> nx.DiGraph:
     """
     Create a networkx directed graph from a napari Tracks layer.
     """
 
-    nx_graph = nx.from_pandas_edgelist(
-        edges_df, create_using=nx.DiGraph(), edge_attr=None
-    )  # Don't pass in edge attrs here, otherwise you build the wrong graph
-    node_axis_properties = (
-        tracks_layer_data.loc[
-            :,
-            [
-                column
-                for column in tracks_layer_data
-                if "napari_track_id" not in column
-            ],
-        ]
-        .set_index("node_id")
-        .apply(lambda row: row.dropna().to_dict(), axis=1)
-        .to_dict()
-    )
-    nx.set_node_attributes(nx_graph, node_axis_properties)
+    # Ignore napari-only bookkeeping columns when rebuilding node attrs.
+    skip_columns: set[str] = {"napari_track_id"}
+    if axis_names:
+        skip_columns.update(axis_names)
+
+    def _row_to_attrs(row: pd.Series) -> dict[str, Any]:
+        attrs: dict[str, Any] = {}
+        for column, value in row.items():
+            if column in skip_columns or column == "node_id":
+                continue
+            if pd.isna(value):
+                continue
+            attrs[column] = _to_python_scalar(value)
+        return attrs
+
+    tracks_layer_data = tracks_layer_data.copy()
+
+    # Start from the existing geff graph if we have one otherwise, build fresh.
+    if base_graph is not None:
+        nx_graph = base_graph.copy(as_view=False)
+    else:
+        nx_graph = nx.DiGraph()
+
+    # Track desired edges using python scalars so they match the target graph.
+    desired_edges: set[tuple[Any, Any]] = set()
+    if not edges_df.empty:
+        for _, row in edges_df.iterrows():
+            desired_edges.add(
+                (
+                    _to_python_scalar(row["source"]),
+                    _to_python_scalar(row["target"]),
+                )
+            )
+
+    # Allow for graph modifications when writing out
+    for node_id in tracks_layer_data["node_id"]:
+        node_id_py = _to_python_scalar(node_id)
+        if not nx_graph.has_node(node_id_py):
+            nx_graph.add_node(node_id_py)
+
+    existing_edges = set(nx_graph.edges())
+    if base_graph is None:
+        # Fresh graph: align edge set exactly with the desired tracks edges.
+        for edge in desired_edges - existing_edges:
+            nx_graph.add_edge(*edge)
+        for edge in existing_edges - desired_edges:
+            nx_graph.remove_edge(*edge)
+    else:
+        for edge in desired_edges:
+            # Allow for graph modifications when writing out
+            if edge not in existing_edges:
+                nx_graph.add_edge(*edge)
+
+    node_attr_updates = {}
+    for _, row in tracks_layer_data.iterrows():
+        node_id = _to_python_scalar(row["node_id"])
+        attrs = _row_to_attrs(row)
+        if attrs:
+            node_attr_updates.setdefault(node_id, {}).update(attrs)
+
+        # Preserve axis-aligned coords
+        positional_attrs: dict[str, Any] = {}
+        if axis_names:
+            for name in axis_names:
+                value = row.get(name)
+                if pd.isna(value):
+                    continue
+                positional_attrs[name] = _to_python_scalar(value)
+        if positional_attrs:
+            node_attr_updates.setdefault(node_id, {}).update(positional_attrs)
+
+    if node_attr_updates:
+        nx.set_node_attributes(nx_graph, node_attr_updates)
 
     if edge_properties:
-        nx.set_edge_attributes(nx_graph, edge_properties)
+        prepared_edge_props = _prepare_edge_attributes(edge_properties)
+        nx.set_edge_attributes(nx_graph, prepared_edge_props)
 
     return nx_graph
