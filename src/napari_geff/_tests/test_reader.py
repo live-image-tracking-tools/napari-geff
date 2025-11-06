@@ -3,7 +3,6 @@ from types import SimpleNamespace
 
 import napari
 import numpy as np
-import pandas as pd
 import zarr
 from geff_spec import Axis, DisplayHint
 
@@ -128,7 +127,7 @@ def test_reader_loads_layer(path_w_expected_graph_props):
     layer_tuples = reader_function(str(written_path))
     assert len(layer_tuples) == 1
     data, metadata, layer_type = layer_tuples[0]
-    assert isinstance(data, pd.DataFrame)
+    assert isinstance(data, np.ndarray)
     assert isinstance(metadata, dict)
     assert layer_type == "tracks"
 

@@ -1,7 +1,7 @@
 {
   "attributes": {
     "geff": {
-      "geff_version": "0.3.0",
+      "geff_version": "1.1.2",
       "directed": true,
       "axes": [
         {
@@ -36,7 +36,13 @@
           "type": "image",
           "path": "../image/"
         }
-      ]
+      ],
+      "edge_props_metadata": {},
+            "node_props_metadata": {
+        "frame": { "identifier": "frame", "dtype": "int64", "varlength": false, "unit": "frame" },
+        "x":     { "identifier": "x",     "dtype": "float64", "varlength": false, "unit": "pixel" },
+        "y":     { "identifier": "y",     "dtype": "float64", "varlength": false, "unit": "pixel" }
+      }
     }
   },
   "zarr_format": 3,
