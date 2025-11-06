@@ -266,17 +266,16 @@ def create_nx_graph(
             nx_graph.add_node(node_id_py)
 
     existing_edges = set(nx_graph.edges())
-    if base_graph is None:
-        # Fresh graph: align edge set exactly with the desired tracks edges.
-        for edge in desired_edges - existing_edges:
-            nx_graph.add_edge(*edge)
-        for edge in existing_edges - desired_edges:
-            nx_graph.remove_edge(*edge)
-    else:
-        for edge in desired_edges:
-            # Allow for graph modifications when writing out
-            if edge not in existing_edges:
-                nx_graph.add_edge(*edge)
+    edges_to_add = desired_edges - existing_edges
+    edges_to_remove = existing_edges - desired_edges
+
+    for edge in edges_to_add:
+        nx_graph.add_edge(*edge)
+
+    for edge in edges_to_remove:
+        nx_graph.remove_edge(*edge)
+        if edge_properties:
+            edge_properties.pop(edge, None)
 
     node_attr_updates = {}
     for _, row in tracks_layer_data.iterrows():
