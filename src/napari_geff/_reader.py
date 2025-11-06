@@ -8,7 +8,6 @@ The original networkx graph read by `geff.read` is stored in the metadata
 attribute on the layer.
 """
 
-import contextlib
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -21,6 +20,7 @@ import pydantic
 import zarr
 from geff import GeffMetadata
 
+from napari_geff._features import build_typed_node_features
 from napari_geff.utils import get_display_axes, get_tracklets_nx
 
 
@@ -152,27 +152,32 @@ def reader_function(
 
     node_to_tid, track_graph = get_tracklets_nx(nx_graph)
 
-    node_data_df = pd.DataFrame(nx_graph.nodes(data=True))
-    node_data_df.rename(columns={0: "node_id"}, inplace=True)
+    # Determine the node order from the NetworkX graph (used for tracks rows)
+    node_ids_in_nx_order = [n for n, _ in nx_graph.nodes(data=True)]
 
-    # Expand the 'props' column into multiple columns, don't use apply(pd.Series) on each row, since dtype won't be preserved
-    expanded_cols_df = pd.DataFrame(
-        node_data_df[1].tolist(), index=node_data_df.index
+    # Build typed features directly from GEFF store, aligned to the NX node order
+    typed_features_df = build_typed_node_features(
+        path, geff_metadata, node_ids_in_nx_order
     )
-
-    # Drop tbe original column of property dicts, and concat with the node_id
-    node_data_df = pd.concat(
-        [node_data_df.drop(columns=[1]), expanded_cols_df],
-        axis=1,
+    typed_features_df["napari_track_id"] = typed_features_df["node_id"].map(
+        node_to_tid
     )
-    node_data_df["napari_track_id"] = node_data_df["node_id"].map(node_to_tid)
 
     display_axes, time_axis_name = get_display_axes(geff_metadata)
 
-    tracks_napari = node_data_df[(["napari_track_id"] + display_axes)]
-    tracks_napari.sort_values(
-        by=["napari_track_id", time_axis_name], inplace=True
-    )  # Just in case
+    tracks_napari = typed_features_df[["napari_track_id"] + display_axes]
+    # Sort without inplace to avoid those pandas warnings
+    tracks_napari = tracks_napari.sort_values(
+        by=["napari_track_id", time_axis_name]
+    )
+    sorted_index = tracks_napari.index
+    # Align features to the same sorted order and drop old index
+    features_sorted = typed_features_df.loc[sorted_index].reset_index(
+        drop=True
+    )
+    tracks_napari = tracks_napari.reset_index(drop=True)
+    # Ensure napari "data" is a pure numeric NumPy array
+    tracks_data_array = tracks_napari.astype(float).to_numpy()
 
     metadata = {
         "nx_graph": nx_graph,
@@ -182,35 +187,14 @@ def reader_function(
         "geff_metadata": geff_metadata,
     }
 
-    zarrgeff = zarr.open(path, mode="r")
-    np_to_pd_dtype = {
-        np.dtype(np.int8): pd.Int8Dtype(),
-        np.dtype(np.int16): pd.Int16Dtype(),
-        np.dtype(np.int32): pd.Int32Dtype(),
-        np.dtype(np.int64): pd.Int64Dtype(),
-        np.dtype(np.uint8): pd.UInt8Dtype(),
-        np.dtype(np.uint16): pd.UInt16Dtype(),
-        np.dtype(np.uint32): pd.UInt32Dtype(),
-        np.dtype(np.uint64): pd.UInt64Dtype(),
-        np.dtype(np.float32): pd.Float32Dtype(),
-        np.dtype(np.float64): pd.Float64Dtype(),
-        np.dtype(np.bool): pd.BooleanDtype(),
-    }
-    for prop in zarrgeff["nodes"]["props"]:
-        dtype = zarrgeff["nodes"]["props"][prop]["values"].dtype
-        with contextlib.suppress(ValueError, TypeError):
-            node_data_df[prop] = node_data_df[prop].astype(
-                np_to_pd_dtype[dtype]
-            )
-
     layers += [
         (
-            tracks_napari,
+            tracks_data_array,
             {
                 "graph": track_graph,
                 "name": "Tracks",
                 "metadata": metadata,
-                "features": node_data_df,
+                "features": features_sorted,
                 "scale": scale,
                 "translate": offset,
             },
