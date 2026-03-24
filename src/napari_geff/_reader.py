@@ -170,8 +170,8 @@ def reader_function(
     display_axes, time_axis_name = get_display_axes(geff_metadata)
 
     tracks_napari = node_data_df[(["napari_track_id"] + display_axes)]
-    tracks_napari.sort_values(
-        by=["napari_track_id", time_axis_name], inplace=True
+    tracks_napari = tracks_napari.sort_values(
+        by=["napari_track_id", time_axis_name]
     )  # Just in case
 
     metadata = {
