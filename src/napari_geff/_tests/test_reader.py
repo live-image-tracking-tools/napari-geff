@@ -1,4 +1,3 @@
-import json
 from types import SimpleNamespace
 
 import napari
@@ -41,12 +40,12 @@ def test_reader_geff_no_axes(tmp_path, path_w_expected_graph_props):
         {"score": np.float32, "color": np.uint8},
         directed=True,
     )
-    # read zattrs file and delete spatial axes attributes
-    # then write it back out
+    # delete the axes from the geff attributes, then write them back out
+    # through zarr, whichever zarr format geff wrote
     graph = zarr.open(str(written_path), mode="a")
-    del graph.attrs["geff"]["axes"]
-    with open(written_path / ".zattrs", "w") as f:
-        json.dump(dict(graph.attrs), f)
+    geff_attrs = dict(graph.attrs["geff"])
+    del geff_attrs["axes"]
+    graph.attrs["geff"] = geff_attrs
     reader = get_geff_reader(str(written_path))
     assert (
         reader is None
@@ -67,17 +66,16 @@ def test_reader_geff_no_time_axis(tmp_path, path_w_expected_graph_props):
 
     # Open the zarr store to manipulate its attributes
     zarr_group = zarr.open(str(written_path), mode="a")
-    original_axes = zarr_group.attrs["geff"]["axes"]
+    geff_attrs = dict(zarr_group.attrs["geff"])
 
     # Create a new list of axes containing only the spatial ones
     spatial_axes_only = [
-        axis for axis in original_axes if axis.get("type") != "time"
+        axis for axis in geff_attrs["axes"] if axis.get("type") != "time"
     ]
-    zarr_group.attrs["geff"]["axes"] = spatial_axes_only
+    geff_attrs["axes"] = spatial_axes_only
 
-    # Write the modified attributes back to the .zattrs file
-    with open(written_path / ".zattrs", "w") as f:
-        json.dump(dict(zarr_group.attrs), f)
+    # Write the modified attributes back through zarr (v2 or v3)
+    zarr_group.attrs["geff"] = geff_attrs
 
     # The reader should reject this file
     reader = get_geff_reader(str(written_path))
@@ -98,17 +96,16 @@ def test_reader_geff_no_space_axes(tmp_path, path_w_expected_graph_props):
 
     # Open the zarr store to manipulate its attributes
     zarr_group = zarr.open(str(written_path), mode="a")
-    original_axes = zarr_group.attrs["geff"]["axes"]
+    geff_attrs = dict(zarr_group.attrs["geff"])
 
     # Create a new list of axes containing only the time axis
     time_axis_only = [
-        axis for axis in original_axes if axis.get("type") != "space"
+        axis for axis in geff_attrs["axes"] if axis.get("type") != "space"
     ]
-    zarr_group.attrs["geff"]["axes"] = time_axis_only
+    geff_attrs["axes"] = time_axis_only
 
-    # Write the modified attributes back to the .zattrs file
-    with open(written_path / ".zattrs", "w") as f:
-        json.dump(dict(zarr_group.attrs), f)
+    # Write the modified attributes back through zarr (v2 or v3)
+    zarr_group.attrs["geff"] = geff_attrs
 
     # The reader should reject this file
     reader = get_geff_reader(str(written_path))
